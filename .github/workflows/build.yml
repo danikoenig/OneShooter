@@ -39,6 +39,7 @@ jobs:
           killall -9 AudioComponentRegistrar 2>/dev/null || true
           sleep 2
           auval -a | grep -i "Dkng" || true
+          set -o pipefail
           auval -strict -v aumu Kck1 Dkng | tail -40
 
       - name: Sign (ad-hoc) and package

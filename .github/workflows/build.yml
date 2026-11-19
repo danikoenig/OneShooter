@@ -1,0 +1,54 @@
+name: Build macOS (Apple Silicon)
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest   # Apple Silicon Runner
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache JUCE
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-8.0.4-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+      - name: Build
+        run: cmake --build build --config Release --target KickSampler_VST3 KickSampler_Standalone -j 4
+
+      - name: Sign (ad-hoc) and package
+        run: |
+          ART=build/KickSampler_artefacts/Release
+          codesign --force --deep --sign - "$ART/VST3/Kick Sampler.vst3"
+          codesign --force --deep --sign - "$ART/Standalone/Kick Sampler.app"
+          mkdir -p dist
+          ditto -c -k --keepParent "$ART/VST3/Kick Sampler.vst3" "dist/KickSampler-VST3-macOS-arm64.zip"
+          ditto -c -k --keepParent "$ART/Standalone/Kick Sampler.app" "dist/KickSampler-Standalone-macOS-arm64.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KickSampler-macOS-arm64
+          path: dist/*.zip
+
+      - name: Release (nur bei Tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip

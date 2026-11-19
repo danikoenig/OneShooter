@@ -1,6 +1,6 @@
 # One Shooter
 
-A one-shot sampler instrument (VST3) for macOS on Apple Silicon, inspired by Ableton's Drum Sampler. Built for kicks, works with any one-shot.
+A one-shot sample player (VST3 and Audio Unit) for macOS on Apple Silicon, inspired by Ableton's Drum Sampler. Built for kicks, works with any one-shot.
 
 by Dani Koenig
 
@@ -30,25 +30,26 @@ by Dani Koenig
 Get the latest version from the [Releases page](https://github.com/danikoenig/OneShooter/releases):
 
 - **OneShooter-Installer.pkg** – easiest, no Terminal needed
-- **OneShooter-VST3-macOS-arm64.zip** – the plugin plus the install guide, for manual installation
+- **OneShooter-VST3-macOS-arm64.zip** – VST3 and AU plugin plus the install guide, for manual installation
 
 ## Installation
 
 Step-by-step guide (English and German): [INSTALL.txt](INSTALL.txt)
 
-**Installer:** double-click `OneShooter-Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs to `/Library/Audio/Plug-Ins/VST3`.
+**Installer:** double-click `OneShooter-Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs the VST3 to `/Library/Audio/Plug-Ins/VST3` and the Audio Unit to `/Library/Audio/Plug-Ins/Components`.
 
 **Manual (Terminal):** unzip in your Downloads folder, then:
 
 ```
-mkdir -p ~/Library/Audio/Plug-Ins/VST3
+mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
 cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.component" -print -quit)" ~/Library/Audio/Plug-Ins/Components/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/Library/Audio/Plug-Ins/Components/"One Shooter.component"
 ```
 
 Then restart your DAW and rescan plugins.
 
-**Requirements:** Apple Silicon Mac (M1 or newer), macOS 11 or newer, a DAW with VST3 support (Bitwig, Ableton Live, Cubase, Studio One, Reaper ...). Logic Pro and GarageBand don't support VST3.
+**Requirements:** Apple Silicon Mac (M1 or newer), macOS 11 or newer, a DAW with VST3 (Bitwig, Ableton Live, Cubase, Studio One, Reaper ...) or Audio Unit support (Logic Pro, GarageBand).
 
 ## Building
 
@@ -58,10 +59,10 @@ To build locally, you need the Xcode Command Line Tools and CMake (`brew install
 
 ```
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
-cmake --build build --target OneShooter_VST3 -j 8
+cmake --build build --target OneShooter_VST3 OneShooter_AU -j 8
 ```
 
-Output: `build/OneShooter_artefacts/Release/VST3/One Shooter.vst3`
+Output: `build/OneShooter_artefacts/Release/VST3/One Shooter.vst3` and `build/OneShooter_artefacts/Release/AU/One Shooter.component`
 
 ## Notes
 

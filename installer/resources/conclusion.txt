@@ -2,6 +2,7 @@ Done!
 
 Restart your DAW and rescan plugins. Then search for "One Shooter"
 in your instrument list.
+Logic Pro: the plugin is under Instrument > AU Instruments > Dani Koenig.
 
 If you installed One Shooter earlier with the Terminal commands, delete the
 old copy in your user folder so it doesn't show up twice:
@@ -10,6 +11,7 @@ old copy in your user folder so it doesn't show up twice:
 ---
 
 Fertig! Starte deine DAW neu und lass die Plugins neu scannen.
+Logic Pro: Instrument > AU Instruments > Dani Koenig.
 Falls du One Shooter früher per Terminal installiert hast, lösche die alte
 Kopie in deinem Benutzerordner (siehe oben), damit es nicht doppelt erscheint.
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(OneShooter VERSION 1.3.2)
+project(OneShooter VERSION 1.4.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,7 +23,8 @@ juce_add_plugin(OneShooter
     BUNDLE_ID "ch.danikoenig.oneshooter"
     PLUGIN_MANUFACTURER_CODE Dkng
     PLUGIN_CODE Kck1
-    FORMATS VST3 Standalone
+    FORMATS VST3 AU Standalone
+    AU_MAIN_TYPE kAudioUnitType_MusicDevice
     PRODUCT_NAME "One Shooter"
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE

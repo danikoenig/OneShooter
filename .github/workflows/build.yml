@@ -30,15 +30,26 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
 
       - name: Build
-        run: cmake --build build --config Release --target OneShooter_VST3 OneShooter_Standalone -j 4
+        run: cmake --build build --config Release --target OneShooter_VST3 OneShooter_AU OneShooter_Standalone -j 4
+
+      - name: Validate AU (auval)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/OneShooter_artefacts/Release/AU/One Shooter.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 2
+          auval -a | grep -i "Dkng" || true
+          auval -strict -v aumu Kck1 Dkng | tail -40
 
       - name: Sign (ad-hoc) and package
         run: |
           ART=build/OneShooter_artefacts/Release
           codesign --force --deep --sign - "$ART/VST3/One Shooter.vst3"
+          codesign --force --deep --sign - "$ART/AU/One Shooter.component"
           codesign --force --deep --sign - "$ART/Standalone/One Shooter.app"
           mkdir -p dist "pkg/One Shooter"
           cp -R "$ART/VST3/One Shooter.vst3" "pkg/One Shooter/"
+          cp -R "$ART/AU/One Shooter.component" "pkg/One Shooter/"
           cp INSTALL.txt "pkg/One Shooter/INSTALL.txt"
           ditto -c -k --keepParent "pkg/One Shooter" "dist/OneShooter-VST3-macOS-arm64.zip"
           ditto -c -k --keepParent "$ART/Standalone/One Shooter.app" "dist/OneShooter-Standalone-macOS-arm64.zip"
@@ -55,7 +66,15 @@ jobs:
           pkgbuild --root pkgroot --component-plist build/pkg/component.plist \
             --identifier ch.danikoenig.oneshooter.vst3 --version "$VERSION" \
             --install-location "/Library/Audio/Plug-Ins/VST3" build/pkg/OneShooterVST3.pkg
-          sed "s/@VERSION@/$VERSION/" installer/distribution.xml > build/pkg/distribution.xml
+          # AU-Paket
+          mkdir -p pkgroot-au
+          cp -R "$ART/AU/One Shooter.component" pkgroot-au/
+          pkgbuild --analyze --root pkgroot-au build/pkg/component-au.plist
+          plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component-au.plist
+          pkgbuild --root pkgroot-au --component-plist build/pkg/component-au.plist \
+            --identifier ch.danikoenig.oneshooter.au --version "$VERSION" \
+            --install-location "/Library/Audio/Plug-Ins/Components" build/pkg/OneShooterAU.pkg
+          sed "s/@VERSION@/$VERSION/g" installer/distribution.xml > build/pkg/distribution.xml
           productbuild --distribution build/pkg/distribution.xml --resources installer/resources \
             --package-path build/pkg "dist/OneShooter-Installer.pkg"
           pkgutil --payload-files "dist/OneShooter-Installer.pkg" | head -5

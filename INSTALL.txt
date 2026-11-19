@@ -13,8 +13,9 @@ REQUIREMENTS
   How to check: click the Apple logo (top left) > "About This Mac".
   Next to "Chip" it must say "Apple M...". Intel Macs are not supported.
 - macOS 11 (Big Sur) or newer.
-- A DAW that supports VST3 plugins, e.g. Bitwig, Ableton Live, Cubase,
-  Studio One, Reaper. Logic Pro and GarageBand do NOT support VST3.
+- A DAW: any DAW with VST3 (Bitwig, Ableton Live, Cubase, Studio One,
+  Reaper ...) or with Audio Units (Logic Pro, GarageBand).
+  One Shooter comes in both formats.
 
 There are two ways to install. Way A is the easiest.
 
@@ -55,7 +56,7 @@ STEP 1 - UNZIP
 1. Save the file "OneShooter-VST3-macOS-arm64.zip" to your
    "Downloads" folder.
 2. Double-click the ZIP file. A folder appears in Downloads with
-   "One Shooter.vst3" and this guide inside.
+   "One Shooter.vst3", "One Shooter.component" and this guide inside.
    (Safari sometimes unzips automatically. Then the folder is already there.)
    Leave everything in the Downloads folder.
 
@@ -66,7 +67,7 @@ Terminal is an app that is already on every Mac.
 3. Press Enter. A window with text opens. That is Terminal.
 
 STEP 3 - COPY THE COMMANDS INTO TERMINAL
-1. Select ALL three lines between the two dashed lines below
+1. Select ALL four lines between the two dashed lines below
    (from "mkdir" to the end of the "xattr" line).
 2. Copy them with Cmd + C.
 3. Click into the Terminal window.
@@ -74,16 +75,18 @@ STEP 3 - COPY THE COMMANDS INTO TERMINAL
 5. Press Enter.
 
 ------------------------- copy from here -------------------------
-mkdir -p ~/Library/Audio/Plug-Ins/VST3
+mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
 cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.component" -print -quit)" ~/Library/Audio/Plug-Ins/Components/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/Library/Audio/Plug-Ins/Components/"One Shooter.component"
 ------------------------- copy up to here ------------------------
 
 What the commands do:
-- Line 1 makes sure the plugin folder exists.
-- Line 2 finds "One Shooter.vst3" in your Downloads and copies it into
-  your plugin folder.
-- Line 3 removes the macOS "downloaded from the internet" block.
+- Line 1 makes sure the plugin folders exist.
+- Line 2 and 3 find "One Shooter.vst3" (VST3) and "One Shooter.component"
+  (Audio Unit for Logic/GarageBand) in your Downloads and copy them into
+  your plugin folders.
+- Line 4 removes the macOS "downloaded from the internet" block.
   Without this, macOS will refuse to load the plugin, because it is
   not sold through Apple.
 
@@ -102,12 +105,14 @@ OPEN YOUR DAW
    - Bitwig: Settings > Locations > Plug-ins > Rescan
    - Ableton Live: Settings > Plug-Ins > "Use VST3 Plug-In System
      Folders" must be ON, then click "Rescan"
+   - Logic Pro: scans automatically on start. You find it under
+     Instrument > AU Instruments > Dani Koenig > One Shooter
 3. Search for "One Shooter" in the instrument list and load it
    onto a track.
 
-Use only ONE of the two ways. If you installed with both, delete the copy in
-your user folder (~/Library/Audio/Plug-Ins/VST3/One Shooter.vst3), otherwise
-the plugin may show up twice.
+Use only ONE of the two ways. If you installed with both, delete the copies in
+your user folder (~/Library/Audio/Plug-Ins/VST3 and ~/Library/Audio/Plug-Ins/
+Components), otherwise the plugin may show up twice.
 
 
 HOW TO USE (SHORT)
@@ -129,22 +134,28 @@ TROUBLESHOOTING
   unzipped yet). Unzip it there and paste the commands again.
 
 - The plugin does not show up in the DAW:
-  Restart the DAW and rescan. With Way B, run the 3 commands again.
+  Restart the DAW and rescan. With Way B, run the 4 commands again.
+
+- Logic Pro does not show One Shooter:
+  Logic Pro > Settings > Plug-in Manager. Find "One Shooter", tick it
+  and click "Reset & Rescan Selection".
 
 - "One Shooter is damaged" or "cannot be opened" (Way B):
-  Line 3 was not run. Paste only this line into Terminal and press Enter:
+  Line 4 was not run. Paste only this line into Terminal and press Enter:
 
-  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/Library/Audio/Plug-Ins/Components/"One Shooter.component"
 
 
 UNINSTALL
 Installed with Way A: open Finder, press Cmd + Shift + G, paste
 /Library/Audio/Plug-Ins/VST3 and press Enter. Move "One Shooter.vst3"
-to the Trash.
+to the Trash. Do the same for /Library/Audio/Plug-Ins/Components and
+"One Shooter.component".
 
-Installed with Way B: paste this line into Terminal and press Enter:
+Installed with Way B: paste these lines into Terminal and press Enter:
 
 mv ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/.Trash/
+mv ~/Library/Audio/Plug-Ins/Components/"One Shooter.component" ~/.Trash/
 
 
 ================================================================
@@ -156,8 +167,9 @@ VORAUSSETZUNGEN
   So prüfst du das: Klick oben links auf das Apple-Logo > "Über diesen Mac".
   Bei "Chip" muss "Apple M..." stehen. Intel-Macs werden nicht unterstützt.
 - macOS 11 (Big Sur) oder neuer.
-- Eine DAW mit VST3-Unterstützung, z. B. Bitwig, Ableton Live, Cubase,
-  Studio One, Reaper. Logic Pro und GarageBand unterstützen KEIN VST3.
+- Eine DAW: jede DAW mit VST3 (Bitwig, Ableton Live, Cubase, Studio One,
+  Reaper ...) oder mit Audio Units (Logic Pro, GarageBand).
+  One Shooter gibt es in beiden Formaten.
 
 Es gibt zwei Wege. Weg A ist der einfachste.
 
@@ -198,7 +210,7 @@ SCHRITT 1 - ENTPACKEN
 1. Speichere die Datei "OneShooter-VST3-macOS-arm64.zip" in deinem
    Ordner "Downloads".
 2. Doppelklick auf die ZIP-Datei. Im Downloads-Ordner erscheint ein
-   Ordner mit "One Shooter.vst3" und dieser Anleitung.
+   Ordner mit "One Shooter.vst3", "One Shooter.component" und dieser Anleitung.
    (Safari entpackt manchmal automatisch. Dann ist der Ordner schon da.)
    Lass alles im Downloads-Ordner liegen.
 
@@ -209,7 +221,7 @@ Terminal ist ein Programm, das auf jedem Mac schon installiert ist.
 3. Drücke Enter. Es öffnet sich ein Fenster mit Text. Das ist das Terminal.
 
 SCHRITT 3 - BEFEHLE INS TERMINAL KOPIEREN
-1. Markiere ALLE drei Zeilen zwischen den beiden gestrichelten Linien
+1. Markiere ALLE vier Zeilen zwischen den beiden gestrichelten Linien
    unten (von "mkdir" bis zum Ende der Zeile mit "xattr").
 2. Kopiere sie mit Cmd + C.
 3. Klicke ins Terminal-Fenster.
@@ -217,16 +229,18 @@ SCHRITT 3 - BEFEHLE INS TERMINAL KOPIEREN
 5. Drücke Enter.
 
 ------------------------- ab hier kopieren -----------------------
-mkdir -p ~/Library/Audio/Plug-Ins/VST3
+mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
 cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.component" -print -quit)" ~/Library/Audio/Plug-Ins/Components/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/Library/Audio/Plug-Ins/Components/"One Shooter.component"
 ------------------------- bis hier kopieren ----------------------
 
 Was die Befehle machen:
-- Zeile 1 stellt sicher, dass der Plugin-Ordner existiert.
-- Zeile 2 sucht "One Shooter.vst3" in deinen Downloads und kopiert es
-  in deinen Plugin-Ordner.
-- Zeile 3 entfernt die macOS-Sperre für Dateien aus dem Internet.
+- Zeile 1 stellt sicher, dass die Plugin-Ordner existieren.
+- Zeile 2 und 3 suchen "One Shooter.vst3" (VST3) und "One Shooter.component"
+  (Audio Unit für Logic/GarageBand) in deinen Downloads und kopieren sie
+  in deine Plugin-Ordner.
+- Zeile 4 entfernt die macOS-Sperre für Dateien aus dem Internet.
   Ohne diesen Schritt lädt macOS das Plugin nicht, weil es nicht
   über Apple vertrieben wird.
 
@@ -246,12 +260,14 @@ DAW ÖFFNEN
    - Bitwig: Settings > Locations > Plug-ins > Rescan
    - Ableton Live: Einstellungen > Plug-Ins > "VST3-Plug-In-Systemordner
      verwenden" muss AN sein, dann auf "Neu scannen" klicken
+   - Logic Pro: scannt beim Start automatisch. Du findest es unter
+     Instrument > AU-Instrumente > Dani Koenig > One Shooter
 3. Suche in der Instrumenten-Liste nach "One Shooter" und lade es
    auf eine Spur.
 
-Nimm nur EINEN der beiden Wege. Wenn du beide benutzt hast, lösche die Kopie
-in deinem Benutzerordner (~/Library/Audio/Plug-Ins/VST3/One Shooter.vst3),
-sonst erscheint das Plugin eventuell doppelt.
+Nimm nur EINEN der beiden Wege. Wenn du beide benutzt hast, lösche die Kopien
+in deinem Benutzerordner (~/Library/Audio/Plug-Ins/VST3 und ~/Library/Audio/
+Plug-Ins/Components), sonst erscheint das Plugin eventuell doppelt.
 
 
 KURZ ZUR BEDIENUNG
@@ -274,20 +290,26 @@ PROBLEME
   noch nicht entpackt). Entpacke es dort und füge die Befehle nochmals ein.
 
 - Das Plugin erscheint nicht in der DAW:
-  DAW neu starten und neu scannen. Bei Weg B die 3 Befehle nochmals ausführen.
+  DAW neu starten und neu scannen. Bei Weg B die 4 Befehle nochmals ausführen.
+
+- Logic Pro zeigt One Shooter nicht an:
+  Logic Pro > Einstellungen > Plug-in-Manager. "One Shooter" suchen,
+  anhaken und auf "Zurücksetzen & Auswahl neu prüfen" klicken.
 
 - "One Shooter ist beschädigt" oder "kann nicht geöffnet werden" (Weg B):
-  Zeile 3 wurde nicht ausgeführt. Füge nur diese Zeile ins Terminal ein
+  Zeile 4 wurde nicht ausgeführt. Füge nur diese Zeile ins Terminal ein
   und drück Enter:
 
-  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/Library/Audio/Plug-Ins/Components/"One Shooter.component"
 
 
 DEINSTALLIEREN
 Mit Weg A installiert: Finder öffnen, Cmd + Shift + G drücken,
 /Library/Audio/Plug-Ins/VST3 einfügen und Enter drücken. "One Shooter.vst3"
-in den Papierkorb legen.
+in den Papierkorb legen. Dasselbe für /Library/Audio/Plug-Ins/Components
+und "One Shooter.component".
 
-Mit Weg B installiert: Füge diese Zeile ins Terminal ein und drück Enter:
+Mit Weg B installiert: Füge diese Zeilen ins Terminal ein und drück Enter:
 
 mv ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/.Trash/
+mv ~/Library/Audio/Plug-Ins/Components/"One Shooter.component" ~/.Trash/

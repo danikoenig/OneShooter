@@ -13,11 +13,16 @@
     <choices-outline>
         <line choice="default">
             <line choice="ch.danikoenig.oneshooter.vst3"/>
+            <line choice="ch.danikoenig.oneshooter.au"/>
         </line>
     </choices-outline>
     <choice id="default"/>
     <choice id="ch.danikoenig.oneshooter.vst3" visible="false">
         <pkg-ref id="ch.danikoenig.oneshooter.vst3"/>
     </choice>
+    <choice id="ch.danikoenig.oneshooter.au" visible="false">
+        <pkg-ref id="ch.danikoenig.oneshooter.au"/>
+    </choice>
     <pkg-ref id="ch.danikoenig.oneshooter.vst3" version="@VERSION@" onConclusion="none">OneShooterVST3.pkg</pkg-ref>
+    <pkg-ref id="ch.danikoenig.oneshooter.au" version="@VERSION@" onConclusion="none">OneShooterAU.pkg</pkg-ref>
 </installer-gui-script>

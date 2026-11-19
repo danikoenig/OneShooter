@@ -1,0 +1,204 @@
+ONE SHOOTER - INSTALLATION (macOS)
+by Dani Koenig
+https://github.com/danikoenig/DrumSampler
+
+English below / Deutsch weiter unten
+
+================================================================
+ENGLISH
+================================================================
+
+REQUIREMENTS
+- A Mac with Apple Silicon (M1, M2, M3, M4 ...).
+  How to check: click the Apple logo (top left) > "About This Mac".
+  Next to "Chip" it must say "Apple M...". Intel Macs are not supported.
+- macOS 11 (Big Sur) or newer.
+- A DAW that supports VST3 plugins, e.g. Bitwig, Ableton Live, Cubase,
+  Studio One, Reaper. Logic Pro and GarageBand do NOT support VST3.
+
+
+STEP 1 - UNZIP
+1. Save the file "OneShooter-VST3-macOS-arm64.zip" to your
+   "Downloads" folder.
+2. Double-click the ZIP file. A folder appears in Downloads with
+   "One Shooter.vst3" and this guide inside.
+   (Safari sometimes unzips automatically. Then the folder is already there.)
+   Leave everything in the Downloads folder.
+
+
+STEP 2 - OPEN TERMINAL
+Terminal is an app that is already on every Mac.
+1. Press Cmd + Space (opens Spotlight search).
+2. Type: Terminal
+3. Press Enter. A window with text opens. That is Terminal.
+
+
+STEP 3 - COPY THE COMMANDS INTO TERMINAL
+1. Select ALL three lines between the two dashed lines below
+   (from "mkdir" to the end of the "xattr" line).
+2. Copy them with Cmd + C.
+3. Click into the Terminal window.
+4. Paste with Cmd + V.
+5. Press Enter.
+
+------------------------- copy from here -------------------------
+mkdir -p ~/Library/Audio/Plug-Ins/VST3
+cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+------------------------- copy up to here ------------------------
+
+What the commands do:
+- Line 1 makes sure the plugin folder exists.
+- Line 2 finds "One Shooter.vst3" in your Downloads and copies it into
+  your plugin folder.
+- Line 3 removes the macOS "downloaded from the internet" block.
+  Without this, macOS will refuse to load the plugin, because it is
+  not sold through Apple.
+
+If macOS asks whether "Terminal" may access your "Downloads" folder,
+click "OK" / "Allow".
+
+If it worked, Terminal shows nothing and is just ready for the next
+input. That is normal. You can close Terminal now.
+
+
+STEP 4 - OPEN YOUR DAW
+1. Quit your DAW completely and start it again.
+2. Let it rescan the plugins (most DAWs do this automatically).
+   - Bitwig: Settings > Locations > Plug-ins > Rescan
+   - Ableton Live: Settings > Plug-Ins > "Use VST3 Plug-In System
+     Folders" must be ON, then click "Rescan"
+3. Search for "One Shooter" in the instrument list and load it
+   onto a track.
+
+
+HOW TO USE (SHORT)
+- Drag a sample onto the waveform, or click "Load".
+- Drag a whole folder onto the plugin: it finds all one-shots and
+  lists them in the library. Click a sample to hear it.
+  Your files are not moved or copied.
+- Keyboard button (top of the SAMPLE section): ON = play the sample
+  pitched across the keyboard (C3 = original pitch).
+
+
+TROUBLESHOOTING
+- "No such file or directory":
+  "One Shooter.vst3" is not in your Downloads folder (or the ZIP is not
+  unzipped yet). Unzip it there and paste the commands again.
+
+- The plugin does not show up in the DAW:
+  Run the 3 commands again, then restart the DAW and rescan.
+
+- "One Shooter is damaged" or "cannot be opened":
+  Line 3 was not run. Paste only this line into Terminal and press Enter:
+
+  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+
+
+UNINSTALL
+Paste this line into Terminal and press Enter:
+
+mv ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/.Trash/
+
+The plugin is moved to the Trash.
+
+
+================================================================
+DEUTSCH
+================================================================
+
+VORAUSSETZUNGEN
+- Ein Mac mit Apple Silicon (M1, M2, M3, M4 ...).
+  So prüfst du das: Klick oben links auf das Apple-Logo > "Über diesen Mac".
+  Bei "Chip" muss "Apple M..." stehen. Intel-Macs werden nicht unterstützt.
+- macOS 11 (Big Sur) oder neuer.
+- Eine DAW mit VST3-Unterstützung, z. B. Bitwig, Ableton Live, Cubase,
+  Studio One, Reaper. Logic Pro und GarageBand unterstützen KEIN VST3.
+
+
+SCHRITT 1 - ENTPACKEN
+1. Speichere die Datei "OneShooter-VST3-macOS-arm64.zip" in deinem
+   Ordner "Downloads".
+2. Doppelklick auf die ZIP-Datei. Im Downloads-Ordner erscheint ein
+   Ordner mit "One Shooter.vst3" und dieser Anleitung.
+   (Safari entpackt manchmal automatisch. Dann ist der Ordner schon da.)
+   Lass alles im Downloads-Ordner liegen.
+
+
+SCHRITT 2 - TERMINAL ÖFFNEN
+Terminal ist ein Programm, das auf jedem Mac schon installiert ist.
+1. Drücke Cmd + Leertaste (öffnet die Spotlight-Suche).
+2. Tippe: Terminal
+3. Drücke Enter. Es öffnet sich ein Fenster mit Text. Das ist das Terminal.
+
+
+SCHRITT 3 - BEFEHLE INS TERMINAL KOPIEREN
+1. Markiere ALLE drei Zeilen zwischen den beiden gestrichelten Linien
+   unten (von "mkdir" bis zum Ende der Zeile mit "xattr").
+2. Kopiere sie mit Cmd + C.
+3. Klicke ins Terminal-Fenster.
+4. Füge sie mit Cmd + V ein.
+5. Drücke Enter.
+
+------------------------- ab hier kopieren -----------------------
+mkdir -p ~/Library/Audio/Plug-Ins/VST3
+cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+------------------------- bis hier kopieren ----------------------
+
+Was die Befehle machen:
+- Zeile 1 stellt sicher, dass der Plugin-Ordner existiert.
+- Zeile 2 sucht "One Shooter.vst3" in deinen Downloads und kopiert es
+  in deinen Plugin-Ordner.
+- Zeile 3 entfernt die macOS-Sperre für Dateien aus dem Internet.
+  Ohne diesen Schritt lädt macOS das Plugin nicht, weil es nicht
+  über Apple vertrieben wird.
+
+Falls macOS fragt, ob "Terminal" auf den Ordner "Downloads" zugreifen
+darf, klick auf "OK" / "Erlauben".
+
+Wenn es geklappt hat, zeigt das Terminal nichts an und wartet einfach
+auf die nächste Eingabe. Das ist normal. Du kannst das Terminal jetzt
+schliessen.
+
+
+SCHRITT 4 - DAW ÖFFNEN
+1. Beende deine DAW komplett und starte sie neu.
+2. Lass die Plugins neu scannen (die meisten DAWs machen das automatisch).
+   - Bitwig: Settings > Locations > Plug-ins > Rescan
+   - Ableton Live: Einstellungen > Plug-Ins > "VST3-Plug-In-Systemordner
+     verwenden" muss AN sein, dann auf "Neu scannen" klicken
+3. Suche in der Instrumenten-Liste nach "One Shooter" und lade es
+   auf eine Spur.
+
+
+KURZ ZUR BEDIENUNG
+- Zieh ein Sample auf die Waveform oder klick auf "Load".
+- Zieh einen ganzen Ordner aufs Plugin: Es findet alle One-Shots und
+  zeigt sie in der Library. Klick auf ein Sample zum Anhören.
+  Deine Dateien werden nicht verschoben oder kopiert.
+- Keyboard-Schalter (oben im Bereich SAMPLE): AN = Sample chromatisch
+  über die Tastatur spielen (C3 = Originaltonhöhe).
+
+
+PROBLEME
+- "No such file or directory":
+  "One Shooter.vst3" liegt nicht im Downloads-Ordner (oder das ZIP ist
+  noch nicht entpackt). Entpacke es dort und füge die Befehle nochmals ein.
+
+- Das Plugin erscheint nicht in der DAW:
+  Die 3 Befehle nochmals ausführen, dann DAW neu starten und neu scannen.
+
+- "One Shooter ist beschädigt" oder "kann nicht geöffnet werden":
+  Zeile 3 wurde nicht ausgeführt. Füge nur diese Zeile ins Terminal ein
+  und drück Enter:
+
+  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+
+
+DEINSTALLIEREN
+Füge diese Zeile ins Terminal ein und drück Enter:
+
+mv ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3" ~/.Trash/
+
+Das Plugin landet im Papierkorb.

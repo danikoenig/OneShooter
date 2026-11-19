@@ -37,8 +37,10 @@ jobs:
           ART=build/OneShooter_artefacts/Release
           codesign --force --deep --sign - "$ART/VST3/One Shooter.vst3"
           codesign --force --deep --sign - "$ART/Standalone/One Shooter.app"
-          mkdir -p dist
-          ditto -c -k --keepParent "$ART/VST3/One Shooter.vst3" "dist/OneShooter-VST3-macOS-arm64.zip"
+          mkdir -p dist "pkg/One Shooter"
+          cp -R "$ART/VST3/One Shooter.vst3" "pkg/One Shooter/"
+          cp INSTALL.txt "pkg/One Shooter/INSTALL.txt"
+          ditto -c -k --keepParent "pkg/One Shooter" "dist/OneShooter-VST3-macOS-arm64.zip"
           ditto -c -k --keepParent "$ART/Standalone/One Shooter.app" "dist/OneShooter-Standalone-macOS-arm64.zip"
 
       - name: Upload artifact

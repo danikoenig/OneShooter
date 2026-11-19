@@ -46,6 +46,8 @@ Für ein Release mit Download-Link: `git tag v1.0.0 && git push --tags`.
 
 ## Installieren
 
+Ausführliche Anleitung für Leute ohne Terminal-Erfahrung (Englisch/Deutsch): [INSTALL.txt](INSTALL.txt)
+
 1. ZIP entpacken.
 2. `One Shooter.vst3` nach `~/Library/Audio/Plug-Ins/VST3/` kopieren.
 3. Da das Plugin nicht von Apple notarisiert ist, einmal im Terminal:

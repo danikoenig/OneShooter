@@ -106,9 +106,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout OneShooterProcessor::createL
               [] (float v, int) { return "+" + String (v, 1) + " dB"; });
 
     layout.add (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::chromatic, 1 }, "Chromatic", false));
-    layout.add (std::make_unique<AudioParameterChoice> (ParameterID { ParamIDs::duckSync, 1 }, "Duck Length", duckChoices, 0));
-    addFloat (ParamIDs::duckFade,   "Duck Fade",   { 0.0f, 1.0f }, 0.3f, pct);
-    addFloat (ParamIDs::duckCurve,  "Duck Curve",  { 0.0f, 1.0f }, 0.5f, pct);
+    layout.add (std::make_unique<AudioParameterChoice> (ParameterID { ParamIDs::duckSync, 1 }, "Gate Length", duckChoices, 0));
+    addFloat (ParamIDs::duckFade,   "Gate Fade",   { 0.0f, 1.0f }, 0.3f, pct);
+    addFloat (ParamIDs::duckCurve,  "Gate Curve",  { 0.0f, 1.0f }, 0.5f, pct);
     addFloat (ParamIDs::velocity,   "Velocity",    { 0.0f, 1.0f }, 0.5f, pct);
     addFloat (ParamIDs::gain,       "Gain",        { -36.0f, 12.0f, 0.1f }, 0.0f, db);
 
@@ -222,7 +222,7 @@ double OneShooterProcessor::duckLengthSeconds() const
     return q > 0.0 ? q * 60.0 / juce::jmax (20.0, hostBpm.load()) : 0.0;
 }
 
-// Duck-Gain zum Zeitpunkt t (Sekunden seit Note-On)
+// Gate-Gain zum Zeitpunkt t (Sekunden seit Note-On)
 static float duckGainAt (double t, double len, float fade, float curve)
 {
     if (len <= 0.0)  return 1.0f;
@@ -404,7 +404,7 @@ void OneShooterProcessor::renderVoices (juce::AudioBuffer<float>& out, int start
             v.ageSamples += 1.0;
             if (duckLen > 0.0 && v.ageSamples / sr >= duckLen)
             {
-                v.active = false;   // Duck-Ende erreicht
+                v.active = false;   // Gate-Ende erreicht
                 continue;
             }
             const float common = v.velocityGain * v.fadeGain * v.releaseGain * duck;

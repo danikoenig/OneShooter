@@ -368,7 +368,7 @@ OneShooterEditor::OneShooterEditor (OneShooterProcessor& p)
     mPitch  = { "PITCH ENV", pitch,  {} };
     mAmp    = { "AMP ENV",   env,    {} };
     mSub    = { "SUB",       sub,    {} };
-    mDuck   = { "DUCK",      duck,   {} };
+    mDuck   = { "GATE",      duck,   {} };
     mClip   = { "CLIPPER",   clip,   {} };
     mOut    = { "OUTPUT",    accent2, {} };
 
@@ -584,7 +584,7 @@ void OneShooterEditor::resized()
         layoutKnobs (inner (mAmp.bounds),    { &kAttack, &kHold, &kDecay, &kRelease });
     }
 
-    // Reihe B: Sub 3 | Duck 3 | Clip 3 | Out 2.5
+    // Reihe B: Sub 3 | Gate 3 | Clip 3 | Out 2.5
     {
         const int gap = 12;
         const float unit = (float) (rowB.getWidth() - 3 * gap) / 11.5f;

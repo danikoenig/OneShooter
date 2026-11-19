@@ -15,7 +15,7 @@ by Dani Koenig
 - **Pitch envelope:** amount (±48 semitones) and decay. Applies to the sample and the sub.
 - **Amp envelope:** attack, hold, decay, release (release Off = one-shot).
 - **Sub oscillator:** volume, tune (Hz with note name), decay.
-- **Duck** (like Kickstart): cuts every hit to a length synced to your DAW tempo (Off, 1/32 to 1 bar), with fade and curve controls.
+- **Gate:** cuts every hit to a length synced to your DAW tempo (Off, 1/32 to 1 bar), with fade and curve controls.
 - **Clipper** (KNOCK style): drive, soft/hard, 4x oversampling, gain reduction meter.
 - **Library:**
   - Drop a folder onto the plugin to find all one-shots inside it, including subfolders.

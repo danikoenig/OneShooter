@@ -35,7 +35,7 @@ namespace ParamIDs
     inline constexpr const char* gain       = "gain";
     // Chromatisch spielen (Root C3 = MIDI 60)
     inline constexpr const char* chromatic  = "chromatic";
-    // Duck: kuerzt den Hit tempo-synchron (wie Kickstart)
+    // Gate: kuerzt den Hit tempo-synchron (IDs heissen aus Kompatibilitaet weiter duck*)
     inline constexpr const char* duckSync   = "duckSync";
     inline constexpr const char* duckFade   = "duckFade";
     inline constexpr const char* duckCurve  = "duckCurve";
@@ -44,7 +44,7 @@ namespace ParamIDs
 // Release-Wert ab dem der Release aus ist (One-Shot)
 inline constexpr float releaseOffValue = 5000.0f;
 
-// Duck-Laengen; Index 0 = Off. Laenge in Viertelnoten (-1 = ein Takt)
+// Gate-Laengen; Index 0 = Off. Laenge in Viertelnoten (-1 = ein Takt)
 inline const juce::StringArray duckChoices { "Off", "1/32", "1/16", "1/16.", "1/8", "1/8.", "1/4", "1/4.", "1/2", "1 bar" };
 inline double duckQuarters (int index, double barQuarters)
 {
@@ -165,7 +165,7 @@ private:
         float  fadeGain = 1.0f;     // Choke
         float  fadeStep = 0.0f;
         juce::uint32 age = 0;
-        double ageSamples = 0.0;     // Samples seit Note-On (fuer Duck)
+        double ageSamples = 0.0;     // Samples seit Note-On (fuer Gate)
     };
 
     void startVoice (int note, int midiVelocity, const SampleData* s);

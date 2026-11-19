@@ -23,10 +23,10 @@ There are two ways to install. Way A is the easiest.
 WAY A - INSTALLER (no Terminal needed)
 ----------------------------------------------------------------
 
-1. Download "One Shooter Installer.pkg".
+1. Download "OneShooter-Installer.pkg".
 
 2. Double-click it.
-   macOS will show a message like "One Shooter Installer.pkg Not Opened"
+   macOS will show a message like "OneShooter-Installer.pkg Not Opened"
    or "cannot be opened because Apple cannot check it".
    This is normal: the plugin is free and not sold through Apple.
    Click "Done" (or "OK"). Do NOT click "Move to Trash".
@@ -35,7 +35,7 @@ WAY A - INSTALLER (no Terminal needed)
    - Click the Apple logo (top left) > "System Settings".
    - Click "Privacy & Security" in the left sidebar.
    - Scroll down to the "Security" section. You'll see:
-     "One Shooter Installer.pkg was blocked ..."
+     "OneShooter-Installer.pkg was blocked ..."
    - Click "Open Anyway" and enter your Mac password.
    - Click "Open" if macOS asks again.
 
@@ -166,10 +166,10 @@ Es gibt zwei Wege. Weg A ist der einfachste.
 WEG A - INSTALLER (ohne Terminal)
 ----------------------------------------------------------------
 
-1. Lade "One Shooter Installer.pkg" herunter.
+1. Lade "OneShooter-Installer.pkg" herunter.
 
 2. Doppelklick darauf.
-   macOS zeigt eine Meldung wie "One Shooter Installer.pkg wurde nicht
+   macOS zeigt eine Meldung wie "OneShooter-Installer.pkg wurde nicht
    geöffnet" oder "kann nicht geöffnet werden, da Apple es nicht prüfen kann".
    Das ist normal: Das Plugin ist gratis und wird nicht über Apple vertrieben.
    Klick auf "Fertig" (oder "OK"). NICHT auf "In den Papierkorb legen".
@@ -178,7 +178,7 @@ WEG A - INSTALLER (ohne Terminal)
    - Klick oben links auf das Apple-Logo > "Systemeinstellungen".
    - Klick links auf "Datenschutz & Sicherheit".
    - Scroll runter zum Bereich "Sicherheit". Dort steht:
-     "One Shooter Installer.pkg wurde blockiert ..."
+     "OneShooter-Installer.pkg wurde blockiert ..."
    - Klick auf "Dennoch öffnen" und gib dein Mac-Passwort ein.
    - Falls macOS nochmals fragt: "Öffnen" klicken.
 

@@ -29,14 +29,14 @@ by Dani Koenig
 
 Get the latest version from the [Releases page](https://github.com/danikoenig/OneShooter/releases):
 
-- **One Shooter Installer.pkg** – easiest, no Terminal needed
+- **OneShooter-Installer.pkg** – easiest, no Terminal needed
 - **OneShooter-VST3-macOS-arm64.zip** – the plugin plus the install guide, for manual installation
 
 ## Installation
 
 Step-by-step guide (English and German): [INSTALL.txt](INSTALL.txt)
 
-**Installer:** double-click `One Shooter Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs to `/Library/Audio/Plug-Ins/VST3`.
+**Installer:** double-click `OneShooter-Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs to `/Library/Audio/Plug-Ins/VST3`.
 
 **Manual (Terminal):** unzip in your Downloads folder, then:
 

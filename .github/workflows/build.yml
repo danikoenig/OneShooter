@@ -57,8 +57,8 @@ jobs:
             --install-location "/Library/Audio/Plug-Ins/VST3" build/pkg/OneShooterVST3.pkg
           sed "s/@VERSION@/$VERSION/" installer/distribution.xml > build/pkg/distribution.xml
           productbuild --distribution build/pkg/distribution.xml --resources installer/resources \
-            --package-path build/pkg "dist/One Shooter Installer.pkg"
-          pkgutil --payload-files "dist/One Shooter Installer.pkg" | head -5
+            --package-path build/pkg "dist/OneShooter-Installer.pkg"
+          pkgutil --payload-files "dist/OneShooter-Installer.pkg" | head -5
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

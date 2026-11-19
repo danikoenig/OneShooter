@@ -5,10 +5,10 @@
 #include "LibraryPanel.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 
-class KickLookAndFeel : public juce::LookAndFeel_V4
+class OneShooterLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
-    KickLookAndFeel();
+    OneShooterLookAndFeel();
     void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h, float pos,
                            float startAngle, float endAngle, juce::Slider&) override;
     void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&, bool, bool) override;
@@ -45,14 +45,14 @@ private:
     int perBar = 16;
 };
 
-class KickSamplerEditor : public juce::AudioProcessorEditor,
+class OneShooterEditor : public juce::AudioProcessorEditor,
                           public juce::FileDragAndDropTarget,
                           private juce::ChangeListener,
                           private juce::Timer
 {
 public:
-    explicit KickSamplerEditor (KickSamplerProcessor&);
-    ~KickSamplerEditor() override;
+    explicit OneShooterEditor (OneShooterProcessor&);
+    ~OneShooterEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -86,8 +86,8 @@ private:
     void setupKnob (Knob& k, const char* paramID, const juce::String& name, juce::Colour c);
     void layoutKnobs (juce::Rectangle<int> area, std::initializer_list<Knob*> knobs);
 
-    KickSamplerProcessor& processor;
-    KickLookAndFeel lnf;
+    OneShooterProcessor& processor;
+    OneShooterLookAndFeel lnf;
 
     LibraryPanel library;
     WaveformView waveform;
@@ -118,7 +118,7 @@ private:
     juce::int64 lastTimelineHash = 0;
     juce::Rectangle<int> tempoBounds, namePill, logoArea;
     juce::String tempoText;
-    KickTimeline timeline;
+    HitTimeline timeline;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KickSamplerEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OneShooterEditor)
 };

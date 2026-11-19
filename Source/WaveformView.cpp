@@ -3,9 +3,9 @@
 #include "NoteValues.h"
 #include <cmath>
 
-using namespace KickColours;
+using namespace ShooterColours;
 
-WaveformView::WaveformView (KickSamplerProcessor& p) : processor (p)
+WaveformView::WaveformView (OneShooterProcessor& p) : processor (p)
 {
     setPeaks (processor.getPeaks());
 }
@@ -17,7 +17,7 @@ void WaveformView::setPeaks (WaveformPeaks newPeaks)
     repaint();
 }
 
-void WaveformView::setTimeline (KickTimeline t)
+void WaveformView::setTimeline (HitTimeline t)
 {
     timeline = std::move (t);
     repaint();

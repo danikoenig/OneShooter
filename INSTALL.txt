@@ -1,6 +1,6 @@
 ONE SHOOTER - INSTALLATION (macOS)
 by Dani Koenig
-https://github.com/danikoenig/DrumSampler
+https://github.com/danikoenig/OneShooter
 
 English below / Deutsch weiter unten
 

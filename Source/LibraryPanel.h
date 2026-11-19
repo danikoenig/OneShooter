@@ -9,7 +9,7 @@ class LibraryPanel : public juce::Component,
                      private juce::ChangeListener
 {
 public:
-    explicit LibraryPanel (KickSamplerProcessor& p);
+    explicit LibraryPanel (OneShooterProcessor& p);
     ~LibraryPanel() override;
 
     void paint (juce::Graphics&) override;
@@ -49,7 +49,7 @@ private:
     void chooseFolder();
     void revealLoaded();
 
-    KickSamplerProcessor& processor;
+    OneShooterProcessor& processor;
     std::vector<SampleLibrary::Entry> all;
     std::vector<Item> items;
     juce::String currentPath;

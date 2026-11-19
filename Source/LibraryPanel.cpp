@@ -2,7 +2,7 @@
 #include "Colours.h"
 #include <map>
 
-using namespace KickColours;
+using namespace ShooterColours;
 
 namespace
 {
@@ -28,7 +28,7 @@ namespace
     }
 }
 
-LibraryPanel::LibraryPanel (KickSamplerProcessor& p) : processor (p)
+LibraryPanel::LibraryPanel (OneShooterProcessor& p) : processor (p)
 {
     search.setTextToShowWhenEmpty ("Search all (e.g. kick 909)", textDim);
     search.setFont (juce::FontOptions (13.0f));

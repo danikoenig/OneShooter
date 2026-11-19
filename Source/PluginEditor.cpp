@@ -3,11 +3,11 @@
 #include "NoteValues.h"
 #include <cmath>
 
-using namespace KickColours;
+using namespace ShooterColours;
 
 //==============================================================================
 // LookAndFeel
-KickLookAndFeel::KickLookAndFeel()
+OneShooterLookAndFeel::OneShooterLookAndFeel()
 {
     setColour (juce::Slider::textBoxTextColourId, text);
     setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
@@ -21,7 +21,7 @@ KickLookAndFeel::KickLookAndFeel()
     setColour (juce::PopupMenu::backgroundColourId, card);
 }
 
-void KickLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h, float pos,
+void OneShooterLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h, float pos,
                                         float startAngle, float endAngle, juce::Slider& s)
 {
     const auto col = juce::Colour::fromString (s.getProperties().getWithDefault ("accent", accent.toString()).toString());
@@ -72,7 +72,7 @@ void KickLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, 
     g.drawLine (qx, qy, px, py, 2.2f);
 }
 
-juce::Label* KickLookAndFeel::createSliderTextBox (juce::Slider& s)
+juce::Label* OneShooterLookAndFeel::createSliderTextBox (juce::Slider& s)
 {
     auto* l = LookAndFeel_V4::createSliderTextBox (s);
     l->setFont (juce::FontOptions (11.5f));
@@ -85,7 +85,7 @@ juce::Label* KickLookAndFeel::createSliderTextBox (juce::Slider& s)
     return l;
 }
 
-void KickLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&,
+void OneShooterLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&,
                                             bool highlighted, bool down)
 {
     auto r = b.getLocalBounds().toFloat().reduced (0.5f);
@@ -108,7 +108,7 @@ void KickLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, 
     g.drawRoundedRectangle (r, 6.0f, 1.0f);
 }
 
-void KickLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool)
+void OneShooterLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool)
 {
     auto r = b.getLocalBounds().toFloat().reduced (1.0f);
     const auto col = juce::Colour::fromString (b.getProperties().getWithDefault ("accent", accent.toString()).toString());
@@ -185,7 +185,7 @@ void KickLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b
     g.drawText (on ? "ON" : "OFF", r.withTrimmedLeft (22.0f), juce::Justification::centred);
 }
 
-void KickLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, int x, int y, int w, int h, bool vertical,
+void OneShooterLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, int x, int y, int w, int h, bool vertical,
                                      int thumbStart, int thumbSize, bool over, bool down)
 {
     auto thumb = vertical ? juce::Rectangle<int> (x, thumbStart, w, thumbSize)
@@ -318,7 +318,7 @@ void LengthCard::paint (juce::Graphics& g)
     row ("Duration",   hasValue ? juce::String (juce::roundToInt (ms)) + " ms" : "--");
 }
 
-KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
+OneShooterEditor::OneShooterEditor (OneShooterProcessor& p)
     : AudioProcessorEditor (&p), processor (p), library (p), waveform (p),
       clipMeter (clip, true), outMeter (accent, false)
 {
@@ -420,13 +420,13 @@ KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
     startTimerHz (30);
 }
 
-KickSamplerEditor::~KickSamplerEditor()
+OneShooterEditor::~OneShooterEditor()
 {
     processor.removeChangeListener (this);
     setLookAndFeel (nullptr);
 }
 
-void KickSamplerEditor::setupKnob (Knob& k, const char* paramID, const juce::String& name, juce::Colour c)
+void OneShooterEditor::setupKnob (Knob& k, const char* paramID, const juce::String& name, juce::Colour c)
 {
     k.slider.setName (name);
     k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
@@ -449,7 +449,7 @@ void KickSamplerEditor::setupKnob (Knob& k, const char* paramID, const juce::Str
     k.slider.setDoubleClickReturnValue (true, param->convertFrom0to1 (param->getDefaultValue()));
 }
 
-void KickSamplerEditor::paint (juce::Graphics& g)
+void OneShooterEditor::paint (juce::Graphics& g)
 {
     g.setGradientFill (juce::ColourGradient (bgTop, 0.0f, 0.0f, bgBottom, 0.0f, (float) getHeight(), false));
     g.fillAll();
@@ -502,7 +502,7 @@ void KickSamplerEditor::paint (juce::Graphics& g)
     g.drawText (tempoText, tempoBounds.withTrimmedLeft (26), juce::Justification::centredLeft);
 }
 
-void KickSamplerEditor::layoutKnobs (juce::Rectangle<int> area, std::initializer_list<Knob*> knobs)
+void OneShooterEditor::layoutKnobs (juce::Rectangle<int> area, std::initializer_list<Knob*> knobs)
 {
     const int w = area.getWidth() / (int) knobs.size();
     for (auto* k : knobs)
@@ -513,7 +513,7 @@ void KickSamplerEditor::layoutKnobs (juce::Rectangle<int> area, std::initializer
     }
 }
 
-void KickSamplerEditor::setLibraryVisible (bool show)
+void OneShooterEditor::setLibraryVisible (bool show)
 {
     if (show == processor.showLibrary)
         return;
@@ -526,7 +526,7 @@ void KickSamplerEditor::setLibraryVisible (bool show)
     repaint();
 }
 
-void KickSamplerEditor::resized()
+void OneShooterEditor::resized()
 {
     auto r = getLocalBounds().reduced (14);
 
@@ -614,18 +614,18 @@ void KickSamplerEditor::resized()
     // Titel in der Clip-Karte zeigt GR an: Meter-Label
 }
 
-bool KickSamplerEditor::isInterestedInFileDrag (const juce::StringArray& files)
+bool OneShooterEditor::isInterestedInFileDrag (const juce::StringArray& files)
 {
     for (auto& f : files)
     {
         juce::File file (f);
-        if (file.isDirectory() || KickSamplerProcessor::isSupportedFile (file))
+        if (file.isDirectory() || OneShooterProcessor::isSupportedFile (file))
             return true;
     }
     return false;
 }
 
-void KickSamplerEditor::filesDropped (const juce::StringArray& files, int, int)
+void OneShooterEditor::filesDropped (const juce::StringArray& files, int, int)
 {
     waveform.setDragHover (false);
     bool loaded = false;
@@ -634,12 +634,12 @@ void KickSamplerEditor::filesDropped (const juce::StringArray& files, int, int)
         juce::File file (f);
         if (file.isDirectory())
             processor.getLibrary().addFolder (file);   // Ordner -> One-Shot-Index
-        else if (! loaded && KickSamplerProcessor::isSupportedFile (file))
+        else if (! loaded && OneShooterProcessor::isSupportedFile (file))
             loaded = processor.loadSample (file);
     }
 }
 
-void KickSamplerEditor::openFileChooser()
+void OneShooterEditor::openFileChooser()
 {
     chooser = std::make_unique<juce::FileChooser> ("Load sample", juce::File(),
                                                    "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg;*.m4a;*.caf");
@@ -652,7 +652,7 @@ void KickSamplerEditor::openFileChooser()
                           });
 }
 
-void KickSamplerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
+void OneShooterEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     waveform.setPeaks (processor.getPeaks());
     updateTimelineIfNeeded (true);
@@ -660,7 +660,7 @@ void KickSamplerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
     library.repaint();
 }
 
-void KickSamplerEditor::timerCallback()
+void OneShooterEditor::timerCallback()
 {
     waveform.refresh();
     updateTimelineIfNeeded (false);
@@ -670,7 +670,7 @@ void KickSamplerEditor::timerCallback()
     library.refreshStatus();
 }
 
-void KickSamplerEditor::updateTimelineIfNeeded (bool force)
+void OneShooterEditor::updateTimelineIfNeeded (bool force)
 {
     const char* ids[] = { ParamIDs::start, ParamIDs::length, ParamIDs::transpose, ParamIDs::pitchAmt,
                           ParamIDs::pitchDecay, ParamIDs::attack, ParamIDs::hold, ParamIDs::decay,
@@ -689,7 +689,7 @@ void KickSamplerEditor::updateTimelineIfNeeded (bool force)
     waveform.setTimeline (timeline);
 }
 
-void KickSamplerEditor::updateInfo()
+void OneShooterEditor::updateInfo()
 {
     const auto peaks = processor.getPeaks();
     sampleName.setText (peaks.isEmpty() ? juce::String ("No sample loaded") : peaks.name, juce::dontSendNotification);

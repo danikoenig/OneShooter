@@ -1,7 +1,7 @@
 #pragma once
 #include <juce_graphics/juce_graphics.h>
 
-namespace KickColours
+namespace ShooterColours
 {
     const juce::Colour bgTop         { 0xff17181c };
     const juce::Colour bgBottom      { 0xff0f1013 };

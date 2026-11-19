@@ -7,10 +7,10 @@
 class WaveformView : public juce::Component
 {
 public:
-    explicit WaveformView (KickSamplerProcessor& p);
+    explicit WaveformView (OneShooterProcessor& p);
 
     void setPeaks (WaveformPeaks newPeaks);
-    void setTimeline (KickTimeline t);
+    void setTimeline (HitTimeline t);
     void refresh();
     void setDragHover (bool b) { dragHover = b; repaint(); }
 
@@ -35,9 +35,9 @@ private:
     void beginGesture();
     void endGesture();
 
-    KickSamplerProcessor& processor;
+    OneShooterProcessor& processor;
     WaveformPeaks peaks;
-    KickTimeline timeline;
+    HitTimeline timeline;
     juce::Path waveCache;
     Drag dragging = Drag::none;
     bool dragHover = false;

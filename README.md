@@ -1,75 +1,67 @@
 # One Shooter
 
-VST3-Instrument für macOS (Apple Silicon), inspiriert von Abletons Drum Sampler. Gebaut für One-Shots, vor allem Kicks.
+A one-shot sampler instrument (VST3) for macOS on Apple Silicon, inspired by Ableton's Drum Sampler. Built for kicks, works with any one-shot.
 
-## Funktionen
+by Dani Koenig
 
-- Sample laden per Drag & Drop oder Button (WAV, AIFF, FLAC, MP3, OGG, M4A, CAF)
-- Waveform mit Start- und End-Marker (ziehen, Doppelklick = ganzes Sample)
-- Raster in der Waveform mit Notenwerten ab Start (1/16, 1/8, 3/16, 1/4 ...) nach DAW-Tempo, inkl. Transpose und Pitch-Envelope
-- Längen-Anzeige als Notenwert, 16tel-Raster eines Takts, Beats und ms
-- Erkennt Tempo und Taktart der DAW automatisch
-- Parameter: Start, Length, Transpose (±48 st), Attack, Hold, Decay, Velocity, Gain
-- Chromatic-Schalter (Keyboard-Symbol): Tonhöhe folgt der MIDI-Taste, C3 = Originalhöhe.
-  Aus: jede MIDI-Note triggert das Sample gleich (Drum-Modus). Ein neuer Hit würgt den vorherigen
-  sauber ab (4 ms Fade), wie bei einer Drum-Machine.
-- Pitch-Envelope (Amount, Decay) wirkt auf Sample und Sub
-- Release beim Note-Off (Standard: Off = One-Shot)
-- Sub-Oszillator: Volume, Tune (Hz + Notenname), Decay
-- Clipper im KNOCK-Stil: Drive, Soft/Hard, 4x Oversampling, Gain-Reduction-Meter
-- Duck (wie Kickstart): kürzt jeden Hit auf eine Länge synchron zum DAW-Tempo
-  (Off, 1/32 bis 1 bar), mit Fade und Curve. Wirkt auf Sample und Sub.
-- Library: ein- und ausblendbar (Schalter oben links). Ordner aufs Plugin ziehen. Alle One-Shots (auch in Unterordnern) werden erkannt
-  und indexiert. Pro importiertem Ordner werden alle Samples flach angezeigt (Unterordner aufgelöst). Suche über alles, Vorhören per Klick oder Pfeiltasten,
-  Prev/Next-Pfeile im Header. Samples werden nicht kopiert oder verschoben. Index liegt unter
-  `~/Library/Application Support/One Shooter/library.json`
-- Alle Parameter automatisierbar, Sample-Pfad wird im Projekt gespeichert
+![One Shooter](docs/screenshot.png)
 
-## Bauen über GitHub
+## Features
 
-1. Auf github.com ein neues Repository anlegen (z. B. `one-shooter`).
-2. Den Inhalt dieses Ordners hochladen (inkl. des versteckten Ordners `.github`).
-   Am einfachsten im Terminal:
-   ```
-   cd one-shooter
-   git init
-   git add .
-   git commit -m "One Shooter"
-   git branch -M main
-   git remote add origin https://github.com/DEIN-NAME/one-shooter.git
-   git push -u origin main
-   ```
-3. Im Repo auf **Actions** gehen. Der Build läuft automatisch (ca. 5–10 Min).
-4. Im fertigen Lauf unten unter **Artifacts** `OneShooter-macOS-arm64` herunterladen.
+- **Sample:** load by drag & drop or the Load button (WAV, AIFF, FLAC, MP3, OGG, M4A, CAF). Waveform with draggable start and end markers (double-click = whole sample).
+- **Note-value grid:** the waveform is labelled from the start marker in note values (1/16, 1/8, 3/16, 1/4 ...) at your DAW's tempo. Transpose and pitch envelope are taken into account.
+- **Length card:** shows the nearest note value, a one-bar 16th grid, beats and milliseconds.
+- **Chromatic mode** (keyboard button): the pitch follows the MIDI key, C3 = original pitch. Off: every key plays the sample at the same pitch (drum mode). Mono: a new hit chokes the previous one with a 4 ms fade.
+- **Pitch envelope:** amount (±48 semitones) and decay. Applies to the sample and the sub.
+- **Amp envelope:** attack, hold, decay, release (release Off = one-shot).
+- **Sub oscillator:** volume, tune (Hz with note name), decay.
+- **Duck** (like Kickstart): cuts every hit to a length synced to your DAW tempo (Off, 1/32 to 1 bar), with fade and curve controls.
+- **Clipper** (KNOCK style): drive, soft/hard, 4x oversampling, gain reduction meter.
+- **Library:**
+  - Drop a folder onto the plugin to find all one-shots inside it, including subfolders.
+  - Each imported folder shows all its samples as one flat list.
+  - Search across everything, audition by click or arrow keys, prev/next buttons in the header.
+  - Show or hide the library with the button next to the logo.
+  - Your files are never moved or copied. The index is stored in `~/Library/Application Support/One Shooter/library.json`.
+- All parameters can be automated. The sample path is saved with your project.
 
-Für ein Release mit Download-Link: `git tag v1.0.0 && git push --tags`.
+## Download
 
-## Installieren
+1. Open the [Actions tab](https://github.com/danikoenig/OneShooter/actions) and click the latest successful run (green check mark).
+2. At the bottom of the page, under **Artifacts**, download `OneShooter-macOS-arm64` (you need to be signed in to GitHub).
+3. Unzip it. Inside you'll find `OneShooter-VST3-macOS-arm64.zip`, which contains the plugin and the install guide.
 
-Ausführliche Anleitung für Leute ohne Terminal-Erfahrung (Englisch/Deutsch): [INSTALL.txt](INSTALL.txt)
+## Installation
 
-1. ZIP entpacken.
-2. `One Shooter.vst3` nach `~/Library/Audio/Plug-Ins/VST3/` kopieren.
-3. Da das Plugin nicht von Apple notarisiert ist, einmal im Terminal:
-   ```
-   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
-   ```
-4. In der DAW die Plugins neu scannen.
+Step-by-step guide for people new to Terminal (English and German): [INSTALL.txt](INSTALL.txt)
 
-## Lokal bauen (optional)
+Short version:
 
-Voraussetzung: Xcode Command Line Tools und CMake (`brew install cmake`).
+```
+mkdir -p ~/Library/Audio/Plug-Ins/VST3
+cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
+```
+
+Then restart your DAW and rescan plugins. The `xattr` line is needed because the plugin is not notarized by Apple.
+
+**Requirements:** Apple Silicon Mac (M1 or newer), macOS 11 or newer, a DAW with VST3 support (Bitwig, Ableton Live, Cubase, Studio One, Reaper ...). Logic Pro and GarageBand don't support VST3.
+
+## Building
+
+Every push to `main` builds the plugin automatically with GitHub Actions on an Apple Silicon runner.
+
+To build locally, you need the Xcode Command Line Tools and CMake (`brew install cmake`):
 
 ```
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
 cmake --build build --target OneShooter_VST3 -j 8
 ```
 
-Ergebnis: `build/OneShooter_artefacts/Release/VST3/One Shooter.vst3`
+Output: `build/OneShooter_artefacts/Release/VST3/One Shooter.vst3`
 
-## Hinweise
+## Notes
 
-- Das Sample wird über den Dateipfad gespeichert. Wird die Datei verschoben, muss sie neu geladen werden.
-- Angezeigte Kick-Länge = kürzerer Wert aus Sample-Bereich (inkl. Transpose) und Envelope (Attack + Hold + Decay).
-- Decay endet bei -60 dB.
-- JUCE wird beim Build automatisch geladen (Version 8.0.4, AGPLv3/kommerzielle Lizenz).
+- Samples are stored by file path. If you move a file, load it again.
+- The decay envelope ends at -60 dB.
+- Built with [JUCE](https://juce.com) 8.0.4, which is downloaded automatically during the build.

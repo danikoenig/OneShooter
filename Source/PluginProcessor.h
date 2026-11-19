@@ -70,7 +70,7 @@ struct WaveformPeaks
 };
 
 // Schnappschuss der Parameter fuer Berechnungen im GUI
-struct KickTimeline
+struct HitTimeline
 {
     double dt = 0.0005;                 // Schrittweite in Sekunden
     std::vector<double> sourcePos;      // Position im Sample (Bruchteil 0..1) pro Schritt
@@ -80,12 +80,12 @@ struct KickTimeline
     double totalSeconds() const { return juce::jmax (sampleSeconds, subSeconds); }
 };
 
-class KickSamplerProcessor : public juce::AudioProcessor,
+class OneShooterProcessor : public juce::AudioProcessor,
                              public juce::ChangeBroadcaster
 {
 public:
-    KickSamplerProcessor();
-    ~KickSamplerProcessor() override = default;
+    OneShooterProcessor();
+    ~OneShooterProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -132,7 +132,7 @@ public:
     juce::File getLoadedFile() const      { const juce::ScopedLock sl (peaksLock); return loadedFile; }
 
     // Simuliert den Kick-Verlauf (Pitch-Envelope, Amp-Envelope, Sub) mit den aktuellen Parametern
-    KickTimeline computeTimeline (double dtSec = 0.0005) const;
+    HitTimeline computeTimeline (double dtSec = 0.0005) const;
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -208,5 +208,5 @@ private:
     float param (P i) const { return p[i]->load(); }
     double duckLengthSeconds() const;   // 0 = aus
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KickSamplerProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OneShooterProcessor)
 };

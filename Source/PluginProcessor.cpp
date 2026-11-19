@@ -44,7 +44,7 @@ namespace
     }
 }
 
-KickSamplerProcessor::KickSamplerProcessor()
+OneShooterProcessor::OneShooterProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMS", createLayout())
 {
@@ -63,7 +63,7 @@ KickSamplerProcessor::KickSamplerProcessor()
     }
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout KickSamplerProcessor::createLayout()
+juce::AudioProcessorValueTreeState::ParameterLayout OneShooterProcessor::createLayout()
 {
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
@@ -115,13 +115,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout KickSamplerProcessor::create
     return layout;
 }
 
-bool KickSamplerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool OneShooterProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto& out = layouts.getMainOutputChannelSet();
     return out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
 }
 
-void KickSamplerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void OneShooterProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     currentSampleRate = sampleRate;
 
@@ -143,12 +143,12 @@ void KickSamplerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
 }
 
 //==============================================================================
-bool KickSamplerProcessor::isSupportedFile (const juce::File& file)
+bool OneShooterProcessor::isSupportedFile (const juce::File& file)
 {
     return file.hasFileExtension ("wav;aif;aiff;flac;mp3;ogg;m4a;caf");
 }
 
-bool KickSamplerProcessor::loadSample (const juce::File& file)
+bool OneShooterProcessor::loadSample (const juce::File& file)
 {
     std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
     if (reader == nullptr || reader->lengthInSamples <= 0)
@@ -209,13 +209,13 @@ bool KickSamplerProcessor::loadSample (const juce::File& file)
     return true;
 }
 
-WaveformPeaks KickSamplerProcessor::getPeaks() const
+WaveformPeaks OneShooterProcessor::getPeaks() const
 {
     const juce::ScopedLock sl (peaksLock);
     return peaks;
 }
 
-double KickSamplerProcessor::duckLengthSeconds() const
+double OneShooterProcessor::duckLengthSeconds() const
 {
     const double barQ = timeSigNum.load() * 4.0 / juce::jmax (1, timeSigDen.load());
     const double q = duckQuarters ((int) std::round (param (pDuckSync)), barQ);
@@ -235,9 +235,9 @@ static float duckGainAt (double t, double len, float fade, float curve)
 }
 
 //==============================================================================
-KickTimeline KickSamplerProcessor::computeTimeline (double dtSec) const
+HitTimeline OneShooterProcessor::computeTimeline (double dtSec) const
 {
-    KickTimeline tl;
+    HitTimeline tl;
     tl.dt = dtSec;
 
     const int n = loadedNumSamples.load();
@@ -299,7 +299,7 @@ KickTimeline KickSamplerProcessor::computeTimeline (double dtSec) const
 }
 
 //==============================================================================
-void KickSamplerProcessor::startVoice (int note, int midiVelocity, const SampleData* s)
+void OneShooterProcessor::startVoice (int note, int midiVelocity, const SampleData* s)
 {
     const float chokeStep = 1.0f / (float) juce::jmax (1.0, currentSampleRate * chokeFadeMs / 1000.0);
 
@@ -351,7 +351,7 @@ void KickSamplerProcessor::startVoice (int note, int midiVelocity, const SampleD
         v.active = false;
 }
 
-void KickSamplerProcessor::releaseVoices (int note)
+void OneShooterProcessor::releaseVoices (int note)
 {
     const float rel = param (pRelease);
     if (rel >= releaseOffValue - 0.5f)
@@ -366,7 +366,7 @@ void KickSamplerProcessor::releaseVoices (int note)
         }
 }
 
-void KickSamplerProcessor::renderVoices (juce::AudioBuffer<float>& out, int startSample, int numSamples,
+void OneShooterProcessor::renderVoices (juce::AudioBuffer<float>& out, int startSample, int numSamples,
                                          const SampleData* s)
 {
     const int outChannels = out.getNumChannels();
@@ -489,7 +489,7 @@ void KickSamplerProcessor::renderVoices (juce::AudioBuffer<float>& out, int star
     }
 }
 
-void KickSamplerProcessor::processClipper (juce::AudioBuffer<float>& buffer)
+void OneShooterProcessor::processClipper (juce::AudioBuffer<float>& buffer)
 {
     const bool on = param (pClipOn) > 0.5f;
     const bool hard = param (pClipHard) > 0.5f;
@@ -527,7 +527,7 @@ void KickSamplerProcessor::processClipper (juce::AudioBuffer<float>& buffer)
     clipReductionDb = maxReduction > prev ? maxReduction : prev * 0.85f;
 }
 
-void KickSamplerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+void OneShooterProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
@@ -622,7 +622,7 @@ void KickSamplerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 }
 
 //==============================================================================
-void KickSamplerProcessor::getStateInformation (juce::MemoryBlock& destData)
+void OneShooterProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
 
@@ -638,7 +638,7 @@ void KickSamplerProcessor::getStateInformation (juce::MemoryBlock& destData)
         copyXmlToBinary (*xml, destData);
 }
 
-void KickSamplerProcessor::setStateInformation (const void* data, int sizeInBytes)
+void OneShooterProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
     {
@@ -659,12 +659,12 @@ void KickSamplerProcessor::setStateInformation (const void* data, int sizeInByte
     }
 }
 
-juce::AudioProcessorEditor* KickSamplerProcessor::createEditor()
+juce::AudioProcessorEditor* OneShooterProcessor::createEditor()
 {
-    return new KickSamplerEditor (*this);
+    return new OneShooterEditor (*this);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new KickSamplerProcessor();
+    return new OneShooterProcessor();
 }

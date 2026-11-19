@@ -57,9 +57,9 @@ target_link_libraries(OneShooter
         juce::juce_recommended_warning_flags)
 
 
-if(KICK_TEST_SRC)
-    add_executable(KickTest ${KICK_TEST_SRC})
-    target_link_libraries(KickTest PRIVATE OneShooter)
-    target_include_directories(KickTest PRIVATE $<TARGET_PROPERTY:OneShooter,INCLUDE_DIRECTORIES>)
-    target_compile_definitions(KickTest PRIVATE $<TARGET_PROPERTY:OneShooter,COMPILE_DEFINITIONS>)
+if(SHOOTER_TEST_SRC)
+    add_executable(ShooterTest ${SHOOTER_TEST_SRC})
+    target_link_libraries(ShooterTest PRIVATE OneShooter)
+    target_include_directories(ShooterTest PRIVATE $<TARGET_PROPERTY:OneShooter,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(ShooterTest PRIVATE $<TARGET_PROPERTY:OneShooter,COMPILE_DEFINITIONS>)
 endif()

@@ -11,12 +11,16 @@ by Dani Koenig
 - **Sample:** load by drag & drop or the Load button (WAV, AIFF, FLAC, MP3, OGG, M4A, CAF). Waveform with draggable start and end markers (double-click = whole sample).
 - **Note-value grid:** the waveform is labelled from the start marker in note values (1/16, 1/8, 3/16, 1/4 ...) at your DAW's tempo. Transpose and pitch envelope are taken into account.
 - **Length card:** shows the nearest note value, a one-bar 16th grid, beats and milliseconds.
-- **Chromatic mode** (keyboard button): the pitch follows the MIDI key, C3 = original pitch. Off: every key plays the sample at the same pitch (drum mode). Mono: a new hit chokes the previous one with a 4 ms fade.
+- **Root note:** detected automatically when you load a sample (falls back to the key in the file name, e.g. `Chord_Hit_Dm`). Click the ROOT pill in the header to choose it, double-click to type it (e.g. `F#2`).
+- **Chromatic mode** (keyboard button): the pitch follows the MIDI key, the root key plays the original pitch. Off: every key plays the sample at the same pitch (drum mode).
+- **Mono / Poly:** Mono = a new hit chokes the previous one (kicks, 808s). Poly = notes ring out together (chords).
 - **Pitch envelope:** amount (±48 semitones) and decay. Applies to the sample and the sub.
 - **Amp envelope:** attack, hold, decay, release (release Off = one-shot).
 - **Sub oscillator:** volume, tune (Hz with note name), decay.
 - **Gate:** cuts every hit to a length synced to your DAW tempo (Off, 1/32 to 1 bar), with fade and curve controls.
-- **Clipper** (KNOCK style): drive, soft/hard, 4x oversampling, gain reduction meter.
+- **Tone:** tilt (darker/brighter), Low Cut and High Cut.
+- **Clipper** (KNOCK style): drive, soft/hard, 4x oversampling, gain reduction meter, **Auto Gain** (loudness matched, so you hear the saturation, not just more level).
+- **Limiter** on the output (ceiling -1 dB) with gain reduction meter.
 - **Library:**
   - Drop a folder onto the plugin to find all one-shots inside it, including subfolders.
   - Each imported folder shows all its samples as one flat list.

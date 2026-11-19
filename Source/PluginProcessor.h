@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include "SampleLibrary.h"
+#include "PitchDetector.h"
 
 namespace ParamIDs
 {
@@ -39,10 +40,22 @@ namespace ParamIDs
     inline constexpr const char* duckSync   = "duckSync";
     inline constexpr const char* duckFade   = "duckFade";
     inline constexpr const char* duckCurve  = "duckCurve";
+    // v1.5
+    inline constexpr const char* poly       = "poly";       // Mono/Poly
+    inline constexpr const char* tone       = "tone";       // Tilt -1..1
+    inline constexpr const char* lowCut     = "lowCut";
+    inline constexpr const char* highCut    = "highCut";
+    inline constexpr const char* clipAuto   = "clipAuto";   // Auto Gain des Clippers
+    inline constexpr const char* limiter    = "limiter";    // Output-Limiter -1 dB
 }
 
 // Release-Wert ab dem der Release aus ist (One-Shot)
 inline constexpr float releaseOffValue = 5000.0f;
+
+// Root-Note: Override-Modi
+inline constexpr float noPitch  = -1000.0f;   // kein Grundton bekannt
+inline constexpr int   rootAuto = -1;         // automatisch erkennen
+inline constexpr int   rootNone = -2;         // aus: C3 = Originalhoehe
 
 // Gate-Laengen; Index 0 = Off. Laenge in Viertelnoten (-1 = ein Takt)
 inline const juce::StringArray duckChoices { "Off", "1/32", "1/16", "1/16.", "1/8", "1/8.", "1/4", "1/4.", "1/2", "1 bar" };
@@ -123,6 +136,16 @@ public:
     float  getPlayPosition() const        { return playPosition.load(); }
     float  getClipReductionDb() const     { return clipReductionDb.load(); }
     float  getOutputPeak() const          { return outputPeak.load(); }
+    float  getLimitReductionDb() const    { return limitReductionDb.load(); }
+
+    // Root-Note (Tonerkennung / manuell)
+    PitchResult getDetectedPitch() const  { const juce::ScopedLock sl (peaksLock); return detected; }
+    int    getRootOverride() const        { return rootOverride.load(); }
+    void   setRootOverride (int midiOrMode);
+    float  getEffectiveRoot() const       { return effectiveRoot.load(); }   // noPitch = keiner
+    bool   isRootFromFileName() const     { return rootFromName.load(); }
+    // Tonart aus dem Dateinamen ("Chord_Hit_Dm" -> D3, "Tom_G" -> G3). -1 wenn keine
+    static int rootFromFileName (const juce::String& name);
 
     // Vorhoeren aus der Library (spielt das Sample einmal ab)
     void   triggerPreview()               { previewRequested = true; }
@@ -143,7 +166,7 @@ private:
     {
         bool   active = false;
         int    note = -1;
-        float  noteOffset = 0.0f;   // Halbtoene relativ zu C3 (Chromatic-Modus)
+        float  noteOffset = 0.0f;   // Halbtoene relativ zur Root-Note (Chromatic-Modus)
         // Sample-Teil
         bool   sampleActive = false;
         double position = 0.0, endPosition = 0.0, baseIncrement = 1.0;
@@ -182,7 +205,7 @@ private:
     WaveformPeaks peaks;
     juce::File loadedFile;
 
-    static constexpr int maxVoices = 4;
+    static constexpr int maxVoices = 8;
     Voice voices[maxVoices];
     juce::uint32 voiceCounter = 0;
 
@@ -196,15 +219,30 @@ private:
     std::atomic<int>    timeSigNum { 4 }, timeSigDen { 4 };
     std::atomic<float>  playPosition { -1.0f };
     std::atomic<float>  clipReductionDb { 0.0f };
+    std::atomic<float>  limitReductionDb { 0.0f };
+    float clipInPow = 0.0f, clipOutPow = 0.0f, clipAutoGain = 1.0f;
+    float limGain = 1.0f;
+    // Tone / Cut (Stereo-Zustand)
+    float toneLp[2] {}, hp1[2] {}, hp2[2] {}, lp1[2] {}, lp2[2] {};
+    struct Svf { bool on = false; float a1 = 1.0f, a2 = 0.0f, a3 = 0.0f, k = 1.41421f; };
+    static Svf makeSvf (float fc, double sr);
+    void processToneCut (juce::AudioBuffer<float>& buffer);
+    void processLimiter (juce::AudioBuffer<float>& buffer);
+    void updateEffectiveRoot();
+    PitchResult detected;
+    std::atomic<int>   rootOverride { rootAuto };
+    std::atomic<float> effectiveRoot { noPitch };
+    std::atomic<bool>  rootFromName { false };
     std::atomic<float>  outputPeak { 0.0f };
     std::atomic<bool>   previewRequested { false };
     juce::SharedResourcePointer<SampleLibrary> library;
     std::atomic<int>    loadedNumSamples { 0 };
     std::atomic<double> loadedSampleRate { 44100.0 };
 
-    std::atomic<float>* p[21] {};
+    std::atomic<float>* p[27] {};
     enum P { pStart, pLength, pTranspose, pPitchAmt, pPitchDecay, pAttack, pHold, pDecay, pRelease,
-             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain, pChromatic, pDuckSync, pDuckFade, pDuckCurve };
+             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain, pChromatic, pDuckSync, pDuckFade, pDuckCurve,
+             pPoly, pTone, pLowCut, pHighCut, pClipAuto, pLimiter };
     float param (P i) const { return p[i]->load(); }
     double duckLengthSeconds() const;   // 0 = aus
 

@@ -55,8 +55,9 @@ OneShooterProcessor::OneShooterProcessor()
                           ParamIDs::release, ParamIDs::subVol, ParamIDs::subTune, ParamIDs::subDecay,
                           ParamIDs::clipOn, ParamIDs::clipHard, ParamIDs::clipDrive, ParamIDs::velocity,
                           ParamIDs::gain, ParamIDs::chromatic, ParamIDs::duckSync, ParamIDs::duckFade,
-                          ParamIDs::duckCurve };
-    for (int i = 0; i < 21; ++i)
+                          ParamIDs::duckCurve, ParamIDs::poly, ParamIDs::tone, ParamIDs::lowCut, ParamIDs::highCut,
+                          ParamIDs::clipAuto, ParamIDs::limiter };
+    for (int i = 0; i < 27; ++i)
     {
         p[i] = apvts.getRawParameterValue (ids[i]);
         jassert (p[i] != nullptr);
@@ -109,6 +110,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout OneShooterProcessor::createL
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { ParamIDs::duckSync, 1 }, "Gate Length", duckChoices, 0));
     addFloat (ParamIDs::duckFade,   "Gate Fade",   { 0.0f, 1.0f }, 0.3f, pct);
     addFloat (ParamIDs::duckCurve,  "Gate Curve",  { 0.0f, 1.0f }, 0.5f, pct);
+    // v1.5
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::poly, 1 }, "Poly", false));
+    addFloat (ParamIDs::tone, "Tone", { -1.0f, 1.0f }, 0.0f,
+              [] (float v, int) { return std::abs (v) < 0.005f ? String ("0") : (v > 0 ? "+" : "") + String (roundToInt (v * 100.0f)); });
+    auto hz = [] (float v, int) { return v >= 1000.0f ? String (v / 1000.0f, 1) + " kHz" : String (roundToInt (v)) + " Hz"; };
+    addFloat (ParamIDs::lowCut,  "Low Cut",  { 20.0f, 20000.0f, 0.0f, 0.25f }, 20.0f,
+              [hz] (float v, int i) { return v <= 20.5f ? String ("Off") : hz (v, i); });
+    addFloat (ParamIDs::highCut, "High Cut", { 20.0f, 20000.0f, 0.0f, 0.25f }, 20000.0f,
+              [hz] (float v, int i) { return v >= 19999.0f ? String ("Off") : hz (v, i); });
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::clipAuto, 1 }, "Clip Auto Gain", true));
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::limiter, 1 },  "Limiter", true));
     addFloat (ParamIDs::velocity,   "Velocity",    { 0.0f, 1.0f }, 0.5f, pct);
     addFloat (ParamIDs::gain,       "Gain",        { -36.0f, 12.0f, 0.1f }, 0.0f, db);
 
@@ -186,6 +198,22 @@ bool OneShooterProcessor::loadSample (const juce::File& file)
         newPeaks.maxs[(size_t) b] = mx;
     }
 
+    // Grundton erkennen (fuer Chromatic), bevor das Sample live geht (nicht unter dem Audio-Lock)
+    PitchResult det = PitchDetector::detect (data->buffer, data->sampleRate);
+    bool fromName = false;
+    if (! det.tonal)
+    {
+        // Akkorde und Noise erkennt der Detektor nicht: Tonart aus dem Dateinamen nehmen
+        const int nameRoot = rootFromFileName (data->name);
+        if (nameRoot >= 0)
+        {
+            det.tonal = true;
+            det.midi = (float) nameRoot;
+            det.confidence = 0.5f;
+            fromName = true;
+        }
+    }
+
     std::unique_ptr<SampleData> old;
     {
         const juce::SpinLock::ScopedLockType sl (sampleLock);
@@ -199,11 +227,16 @@ bool OneShooterProcessor::loadSample (const juce::File& file)
     loadedNumSamples = numSamples;
     loadedSampleRate = reader->sampleRate;
 
+
     {
         const juce::ScopedLock sl (peaksLock);
         peaks = std::move (newPeaks);
         loadedFile = file;
+        detected = det;
     }
+    rootFromName = fromName;
+    rootOverride = rootAuto;
+    updateEffectiveRoot();
 
     sendChangeMessage();
     return true;
@@ -213,6 +246,153 @@ WaveformPeaks OneShooterProcessor::getPeaks() const
 {
     const juce::ScopedLock sl (peaksLock);
     return peaks;
+}
+
+int OneShooterProcessor::rootFromFileName (const juce::String& name)
+{
+    // Tokens wie "Dm", "G", "C#m", "Ebmaj", "F#min" (nicht das erste Wort, das ist meist der Pack-Name)
+    auto tokens = juce::StringArray::fromTokens (name, "_- .()[]", "");
+    tokens.removeEmptyStrings();
+    for (int i = tokens.size() - 1; i >= 1; --i)
+    {
+        const auto t = tokens[i];
+        if (t.length() >= 2 && t.length() <= 4 && t.containsAnyOf ("0123456789"))
+            if (const int withOct = PitchDetector::parseNoteName (t); withOct >= 0)   // z. B. "C3", "F#2"
+                return withOct;
+        const auto letter = juce::CharacterFunctions::toUpperCase (t[0]);
+        if (letter < 'A' || letter > 'G')
+            continue;
+        auto rest = t.substring (1);
+        int acc = 0;
+        if (rest.startsWith ("#") || rest.startsWith (juce::String::fromUTF8 ("\xe2\x99\xaf"))) { acc = 1; rest = rest.fromFirstOccurrenceOf (rest.substring (0, 1), false, false); }
+        else if (rest.startsWith ("b") && ! rest.startsWithIgnoreCase ("bass")) { acc = -1; rest = rest.substring (1); }
+        const auto r = rest.toLowerCase();
+        const bool isKey = r.isEmpty() || r == "m" || r == "min" || r == "minor" || r == "maj" || r == "major" || r == "dur" || r == "moll";
+        if (! isKey || (t[0] != letter && r.isEmpty()))   // einzelnes kleines "a" o.ae. ignorieren
+            continue;
+        static const int pcs[] = { 9, 11, 0, 2, 4, 5, 7 };   // A B C D E F G
+        const int pc = (pcs[letter - 'A'] + acc + 12) % 12;
+        return 60 + pc;   // Oktave 3 (C3 = 60)
+    }
+    return -1;
+}
+
+void OneShooterProcessor::setRootOverride (int midiOrMode)
+{
+    rootOverride = midiOrMode;
+    updateEffectiveRoot();
+    sendChangeMessage();
+}
+
+void OneShooterProcessor::updateEffectiveRoot()
+{
+    const int ov = rootOverride.load();
+    float root = noPitch;
+    if (ov >= 0)
+        root = (float) ov;
+    else if (ov == rootAuto)
+    {
+        const juce::ScopedLock sl (peaksLock);
+        if (detected.tonal)
+        {
+            // Taste fuer die Originalhoehe in Oktave 3 (C3..B3) legen, Cents bleiben erhalten.
+            // So spielt man auch tiefe Kicks/Toms bequem in der Mitte der Tastatur.
+            const float pc = std::fmod (std::fmod (detected.midi, 12.0f) + 12.0f, 12.0f);
+            root = 60.0f + pc;
+            if (root >= 71.5f) root -= 12.0f;
+        }
+    }
+    effectiveRoot = root;
+}
+
+OneShooterProcessor::Svf OneShooterProcessor::makeSvf (float fc, double sr)
+{
+    Svf f;
+    f.on = true;
+    const float g = std::tan (juce::MathConstants<float>::pi * juce::jlimit (10.0f, (float) (sr * 0.45), fc) / (float) sr);
+    f.k = 1.41421f;   // Q 0.707
+    f.a1 = 1.0f / (1.0f + g * (g + f.k));
+    f.a2 = g * f.a1;
+    f.a3 = g * f.a2;
+    return f;
+}
+
+void OneShooterProcessor::processToneCut (juce::AudioBuffer<float>& buffer)
+{
+    const double sr = currentSampleRate;
+    const float tone = param (pTone);
+    const bool toneOn = std::abs (tone) > 0.005f;
+    const float toneCoeff = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 900.0f / (float) sr);
+    const float toneLow = 1.0f - 0.8f * tone, toneHigh = 1.0f + 0.8f * tone;
+    Svf hp, lp;
+    if (param (pLowCut) > 20.5f)     hp = makeSvf (param (pLowCut), sr);
+    if (param (pHighCut) < 19999.0f) lp = makeSvf (param (pHighCut), sr);
+
+    if (! toneOn && ! hp.on && ! lp.on)
+    {
+        for (int ch = 0; ch < 2; ++ch) { toneLp[ch] = hp1[ch] = hp2[ch] = lp1[ch] = lp2[ch] = 0.0f; }
+        return;
+    }
+
+    auto svf = [] (const Svf& f, float x, float& ic1, float& ic2, bool high)
+    {
+        const float v3 = x - ic2;
+        const float v1 = f.a1 * ic1 + f.a2 * v3;
+        const float v2 = ic2 + f.a2 * ic1 + f.a3 * v3;
+        ic1 = 2.0f * v1 - ic1;
+        ic2 = 2.0f * v2 - ic2;
+        return high ? x - f.k * v1 - v2 : v2;
+    };
+
+    const int numCh = juce::jmin (2, buffer.getNumChannels());
+    for (int ch = 0; ch < numCh; ++ch)
+    {
+        auto* d = buffer.getWritePointer (ch);
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+        {
+            float x = d[i];
+            if (toneOn)
+            {
+                toneLp[ch] += toneCoeff * (x - toneLp[ch]);
+                x = toneLp[ch] * toneLow + (x - toneLp[ch]) * toneHigh;
+            }
+            if (hp.on) x = svf (hp, x, hp1[ch], hp2[ch], true);
+            if (lp.on) x = svf (lp, x, lp1[ch], lp2[ch], false);
+            d[i] = x;
+        }
+    }
+}
+
+void OneShooterProcessor::processLimiter (juce::AudioBuffer<float>& buffer)
+{
+    if (param (pLimiter) < 0.5f)
+    {
+        limGain = 1.0f;
+        limitReductionDb = limitReductionDb.load() * 0.85f;
+        return;
+    }
+
+    // Peak-Limiter, Ceiling -1 dB: sofortiger Attack, 80 ms Release, danach harte Grenze
+    const float ceiling = juce::Decibels::decibelsToGain (-1.0f);
+    const float rel = std::exp (-1.0f / (0.08f * (float) currentSampleRate));
+    const int numCh = buffer.getNumChannels();
+    float minGain = 1.0f;
+
+    for (int i = 0; i < buffer.getNumSamples(); ++i)
+    {
+        float peak = 0.0f;
+        for (int ch = 0; ch < numCh; ++ch)
+            peak = juce::jmax (peak, std::abs (buffer.getSample (ch, i)));
+        const float target = peak * limGain > ceiling ? ceiling / juce::jmax (1e-9f, peak) : 1.0f;
+        limGain = target < limGain ? target : target + (limGain - target) * rel;
+        minGain = juce::jmin (minGain, limGain);
+        for (int ch = 0; ch < numCh; ++ch)
+            buffer.setSample (ch, i, juce::jlimit (-ceiling, ceiling, buffer.getSample (ch, i) * limGain));
+    }
+
+    const float red = -juce::Decibels::gainToDecibels (minGain);
+    const float prev = limitReductionDb.load();
+    limitReductionDb = red > prev ? red : prev * 0.85f;
 }
 
 double OneShooterProcessor::duckLengthSeconds() const
@@ -303,11 +483,16 @@ void OneShooterProcessor::startVoice (int note, int midiVelocity, const SampleDa
 {
     const float chokeStep = 1.0f / (float) juce::jmax (1.0, currentSampleRate * chokeFadeMs / 1000.0);
 
+    // Mono: jeder Hit wuergt die vorherigen ab. Poly: nur dieselbe Note (und Vorhoeren) wird abgewuergt.
+    const bool poly = param (pPoly) > 0.5f && note >= 0;
     Voice* target = nullptr;
     for (auto& v : voices)
     {
         if (v.active)
-            v.fadeStep = juce::jmax (v.fadeStep, chokeStep);
+        {
+            if (! poly || v.note == note || v.note < 0)
+                v.fadeStep = juce::jmax (v.fadeStep, chokeStep);
+        }
         else if (target == nullptr)
             target = &v;
     }
@@ -329,7 +514,13 @@ void OneShooterProcessor::startVoice (int note, int midiVelocity, const SampleDa
     v.note = note;
     v.age = ++voiceCounter;
     v.velocityGain = (1.0f - sens) + sens * vel * vel;
-    v.noteOffset = (param (pChromatic) > 0.5f && note >= 0) ? (float) (note - rootNote) : 0.0f;
+    if (param (pChromatic) > 0.5f && note >= 0)
+    {
+        const float root = effectiveRoot.load();
+        v.noteOffset = (float) note - (root > noPitch + 1.0f ? root : (float) rootNote);
+    }
+    else
+        v.noteOffset = 0.0f;
 
     if (s != nullptr)
     {
@@ -493,7 +684,14 @@ void OneShooterProcessor::processClipper (juce::AudioBuffer<float>& buffer)
 {
     const bool on = param (pClipOn) > 0.5f;
     const bool hard = param (pClipHard) > 0.5f;
+    const bool autoGain = param (pClipAuto) > 0.5f;
     clipDriveSmoothed.setTargetValue (on ? juce::Decibels::decibelsToGain (param (pClipDrive)) : 1.0f);
+
+    // Pegel vor dem Clipper (fuer Auto Gain)
+    double inSum = 0.0;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            inSum += (double) buffer.getSample (ch, i) * buffer.getSample (ch, i);
 
     juce::dsp::AudioBlock<float> block (buffer);
     auto up = oversampler->processSamplesUp (block);
@@ -521,6 +719,33 @@ void OneShooterProcessor::processClipper (juce::AudioBuffer<float>& buffer)
     }
 
     oversampler->processSamplesDown (block);
+
+    // Auto Gain: Lautheit nach dem Clipper an die vorher angleichen (gleitend ~300 ms),
+    // so hoert man die Saettigung, nicht einfach mehr Pegel
+    {
+        double outSum = 0.0;
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                outSum += (double) buffer.getSample (ch, i) * buffer.getSample (ch, i);
+        const float n = (float) juce::jmax (1, buffer.getNumSamples() * buffer.getNumChannels());
+        const float a = 1.0f - std::exp (-(float) buffer.getNumSamples() / (0.3f * (float) currentSampleRate));
+        if (inSum / n > 1e-8)
+        {
+            clipInPow  += a * ((float) (inSum / n)  - clipInPow);
+            clipOutPow += a * ((float) (outSum / n) - clipOutPow);
+        }
+        const float target = (autoGain && on && clipOutPow > 1e-10f)
+            ? juce::jlimit (0.06f, 2.0f, std::sqrt (clipInPow / clipOutPow)) : 1.0f;
+        const float startG = clipAutoGain;
+        const int numS2 = buffer.getNumSamples();
+        for (int i = 0; i < numS2; ++i)
+        {
+            const float g = startG + (target - startG) * (float) (i + 1) / (float) numS2;
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                buffer.setSample (ch, i, buffer.getSample (ch, i) * g);
+        }
+        clipAutoGain = target;
+    }
 
     // Meter: schnell hoch, langsam runter
     const float prev = clipReductionDb.load();
@@ -596,6 +821,9 @@ void OneShooterProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         playPosition = newest;
     }
 
+    // Tone / Low Cut / High Cut
+    processToneCut (buffer);
+
     // Clipper (4x Oversampling, laeuft immer fuer konstante Latenz)
     if (oversampler != nullptr && buffer.getNumChannels() <= (int) oversampler->numChannels)
         processClipper (buffer);
@@ -616,6 +844,9 @@ void OneShooterProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         buffer.applyGain (gainSmoothed.getTargetValue());
     }
 
+    // Limiter (Ceiling -1 dB)
+    processLimiter (buffer);
+
     const float peak = buffer.getMagnitude (0, numSamples);
     const float prevPeak = outputPeak.load();
     outputPeak = peak > prevPeak ? peak : prevPeak * 0.9f;
@@ -633,6 +864,7 @@ void OneShooterProcessor::getStateInformation (juce::MemoryBlock& destData)
     }
     state.setProperty ("samplePath", path, nullptr);
     state.setProperty ("showLibrary", showLibrary, nullptr);
+    state.setProperty ("rootOverride", rootOverride.load(), nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -648,14 +880,16 @@ void OneShooterProcessor::setStateInformation (const void* data, int sizeInBytes
 
         const juce::String path = state.getProperty ("samplePath").toString();
         showLibrary = (bool) state.getProperty ("showLibrary", true);
+        const int savedRoot = (int) state.getProperty ("rootOverride", rootAuto);
         apvts.replaceState (state);
 
         if (path.isNotEmpty())
         {
             juce::File f (path);
             if (f.existsAsFile())
-                loadSample (f);
+                loadSample (f);   // setzt den Root auf Auto zurueck ...
         }
+        setRootOverride (savedRoot);  // ... darum danach wiederherstellen
     }
 }
 

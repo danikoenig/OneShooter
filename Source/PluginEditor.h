@@ -22,13 +22,34 @@ public:
 class Meter : public juce::Component
 {
 public:
-    Meter (juce::Colour c, bool reduction) : colour (c), isReduction (reduction) {}
+    Meter (juce::Colour c, bool reduction, juce::String cap = {})
+        : colour (c), isReduction (reduction), caption (cap.isNotEmpty() ? cap : juce::String (reduction ? "GR" : "OUT")) {}
     void setValue (float v) { if (std::abs (v - value) > 0.001f) { value = v; repaint(); } }
     void paint (juce::Graphics&) override;
 private:
     juce::Colour colour;
     bool isReduction;
+    juce::String caption;
     float value = 0.0f;
+};
+
+// Root-Note-Anzeige im Header: Klick = Menue, Doppelklick = eintippen
+class RootPill : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    std::function<void()> onClick, onDoubleClick;
+    void set (const juce::String& note, const juce::String& mode)
+    {
+        if (note != noteText || mode != modeText) { noteText = note; modeText = mode; repaint(); }
+    }
+    void paint (juce::Graphics&) override;
+    void mouseUp (const juce::MouseEvent& e) override
+    {
+        if (e.mouseWasClicked() && e.getNumberOfClicks() == 1 && onClick) onClick();
+    }
+    void mouseDoubleClick (const juce::MouseEvent&) override { if (onDoubleClick) onDoubleClick(); }
+private:
+    juce::String noteText, modeText;
 };
 
 // Info-Karte: Laenge als Notenwert + 16tel-Raster
@@ -106,17 +127,25 @@ private:
     Knob kSubVol, kSubTune, kSubDecay;
     Knob kClipDrive;
     Knob kDuckSync, kDuckFade, kDuckCurve;
+    Knob kTone, kLowCut, kHighCut;
+    juce::ToggleButton polyButton, clipAutoButton, limiterButton;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> polyAtt, clipAutoAtt, limiterAtt;
+    RootPill rootPill;
+    std::unique_ptr<juce::TextEditor> rootEditor;
+    void showRootMenu();
+    void showRootEditor();
+    void applyRootText();
     Knob kVelocity, kGain;
 
     juce::ToggleButton clipOn { "ON" }, clipHard { "HARD" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> clipOnAtt, clipHardAtt;
-    Meter clipMeter, outMeter;
+    Meter clipMeter, outMeter, limMeter;
 
-    Module mSample, mPitch, mAmp, mSub, mDuck, mClip, mOut;
+    Module mSample, mPitch, mAmp, mTone, mSub, mDuck, mClip, mOut;
 
     std::unique_ptr<juce::FileChooser> chooser;
     juce::int64 lastTimelineHash = 0;
-    juce::Rectangle<int> tempoBounds, namePill, logoArea;
+    juce::Rectangle<int> tempoBounds, namePill, logoArea, rootBounds;
     juce::String tempoText;
     HitTimeline timeline;
 

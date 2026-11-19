@@ -128,9 +128,9 @@ void OneShooterLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleBut
         g.fillRoundedRectangle (on ? right : left, 4.0f);
         g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
         g.setColour (on ? textDim : bgBottom);
-        g.drawText ("SOFT", left, juce::Justification::centred);
+        g.drawText (b.getProperties().getWithDefault ("left", "SOFT").toString(), left, juce::Justification::centred);
         g.setColour (on ? bgBottom : textDim);
-        g.drawText ("HARD", right, juce::Justification::centred);
+        g.drawText (b.getProperties().getWithDefault ("right", "HARD").toString(), right, juce::Justification::centred);
         return;
     }
 
@@ -182,7 +182,28 @@ void OneShooterLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleBut
     g.fillEllipse (dot);
     g.setColour (on ? text : textDim);
     g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-    g.drawText (on ? "ON" : "OFF", r.withTrimmedLeft (22.0f), juce::Justification::centred);
+    const auto label = b.getProperties().getWithDefault ("label", "").toString();
+    g.drawText (label.isNotEmpty() ? label : juce::String (on ? "ON" : "OFF"), r.withTrimmedLeft (22.0f), juce::Justification::centred);
+}
+
+void RootPill::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    const bool hover = isMouseOver();
+    g.setColour (hover ? cardBorder : inset);
+    g.fillRoundedRectangle (r, 6.0f);
+    g.setColour (cardBorder.brighter (hover ? 0.3f : 0.0f));
+    g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
+    auto t = getLocalBounds().reduced (10, 0);
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+    g.drawText ("ROOT", t.removeFromLeft (34), juce::Justification::centredLeft);
+    g.setColour (noteText == "--" ? textDim : accent2);
+    g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
+    g.drawText (noteText, t.removeFromLeft (40), juce::Justification::centredLeft);
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (10.0f));
+    g.drawText (modeText, t, juce::Justification::centredRight);
 }
 
 void OneShooterLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, int x, int y, int w, int h, bool vertical,
@@ -200,7 +221,7 @@ void Meter::paint (juce::Graphics& g)
     auto r = getLocalBounds().toFloat();
     g.setColour (textDim);
     g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
-    g.drawText (isReduction ? "GR" : "OUT", r.withHeight (12.0f).expanded (10.0f, 0.0f), juce::Justification::centred);
+    g.drawText (caption, r.withHeight (12.0f).expanded (10.0f, 0.0f), juce::Justification::centred);
     auto bar = r.withTrimmedTop (16.0f).withTrimmedBottom (16.0f);
     g.setColour (inset);
     g.fillRoundedRectangle (bar, 3.0f);
@@ -320,7 +341,7 @@ void LengthCard::paint (juce::Graphics& g)
 
 OneShooterEditor::OneShooterEditor (OneShooterProcessor& p)
     : AudioProcessorEditor (&p), processor (p), library (p), waveform (p),
-      clipMeter (clip, true), outMeter (accent, false)
+      clipMeter (clip, true), outMeter (accent, false), limMeter (accent2, true, "LIM")
 {
     setLookAndFeel (&lnf);
 
@@ -370,6 +391,7 @@ OneShooterEditor::OneShooterEditor (OneShooterProcessor& p)
     mSub    = { "SUB",       sub,    {} };
     mDuck   = { "GATE",      duck,   {} };
     mClip   = { "CLIPPER",   clip,   {} };
+    mTone   = { "TONE",      toneCol, {} };
     mOut    = { "OUTPUT",    accent2, {} };
 
     setupKnob (kStart,      ParamIDs::start,      "Start",     accent);
@@ -385,6 +407,40 @@ OneShooterEditor::OneShooterEditor (OneShooterProcessor& p)
     setupKnob (kSubTune,    ParamIDs::subTune,    "Tune",      sub);
     setupKnob (kSubDecay,   ParamIDs::subDecay,   "Decay",     sub);
     setupKnob (kClipDrive,  ParamIDs::clipDrive,  "Drive",     clip);
+    setupKnob (kTone,       ParamIDs::tone,       "Tone",      toneCol);
+    setupKnob (kLowCut,     ParamIDs::lowCut,     "Low Cut",   toneCol);
+    setupKnob (kHighCut,    ParamIDs::highCut,    "High Cut",  toneCol);
+    kTone.slider.getProperties().set ("bipolar", true);
+    kTone.slider.setTooltip ("Tilt: left = darker, right = brighter");
+    kLowCut.slider.setTooltip ("Low cut (high-pass). Off = all the way left");
+    kHighCut.slider.setTooltip ("High cut (low-pass). Off = all the way right");
+
+    auto setupPill = [this] (juce::ToggleButton& b, const char* label, juce::Colour c, const juce::String& tip)
+    {
+        b.getProperties().set ("label", label);
+        b.getProperties().set ("accent", c.toString());
+        b.setTooltip (tip);
+        addAndMakeVisible (b);
+    };
+    polyButton.getProperties().set ("style", "segment");
+    polyButton.getProperties().set ("left", "MONO");
+    polyButton.getProperties().set ("right", "POLY");
+    polyButton.getProperties().set ("accent", env.toString());
+    polyButton.setTooltip ("Mono: every hit chokes the previous one (kicks, 808). Poly: notes ring out together (chords).");
+    addAndMakeVisible (polyButton);
+    setupPill (clipAutoButton, "AUTO", clip, "Auto Gain: matches the loudness after the clipper, so you hear the saturation, not just more level");
+    setupPill (limiterButton, "LIMIT", accent2, "Output limiter, ceiling -1 dB");
+    polyAtt     = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::poly, polyButton);
+    clipAutoAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::clipAuto, clipAutoButton);
+    limiterAtt  = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::limiter, limiterButton);
+
+    rootPill.setTooltip ("Root note of the sample (detected automatically). Click: choose, double-click: type. "
+                         "In chromatic mode this key plays the original pitch.");
+    rootPill.setRepaintsOnMouseActivity (true);
+    rootPill.onClick = [this] { showRootMenu(); };
+    rootPill.onDoubleClick = [this] { juce::PopupMenu::dismissAllActiveMenus(); showRootEditor(); };
+    addAndMakeVisible (rootPill);
+    addAndMakeVisible (limMeter);
     setupKnob (kDuckSync,   ParamIDs::duckSync,   "Length",    duck);
     setupKnob (kDuckFade,   ParamIDs::duckFade,   "Fade",      duck);
     setupKnob (kDuckCurve,  ParamIDs::duckCurve,  "Curve",     duck);
@@ -470,10 +526,10 @@ void OneShooterEditor::paint (juce::Graphics& g)
     g.drawText ("ONE SHOOTER", header.getX() + 34, header.getY() + 4, 200, 22, juce::Justification::centredLeft);
     g.setColour (textDim);
     g.setFont (juce::FontOptions (11.0f));
-    g.drawText ("by Dani Koenig", header.getX() + 34, header.getY() + 24, 200, 14, juce::Justification::centredLeft);
+    g.drawText (juce::String::fromUTF8 ("by Dani Koenig  \xc2\xb7  v") + JucePlugin_VersionString, header.getX() + 34, header.getY() + 24, 200, 14, juce::Justification::centredLeft);
 
     // Modul-Karten
-    for (auto* m : { &mSample, &mPitch, &mAmp, &mSub, &mDuck, &mClip, &mOut })
+    for (auto* m : { &mSample, &mPitch, &mAmp, &mTone, &mSub, &mDuck, &mClip, &mOut })
     {
         auto r = m->bounds.toFloat();
         g.setColour (card);
@@ -544,7 +600,11 @@ void OneShooterEditor::resized()
     header.removeFromLeft (12);
     loadButton.setBounds (header.removeFromRight (130).reduced (0, 4));
     header.removeFromRight (12);
-    tempoBounds = header.removeFromRight (190).reduced (0, 4);
+    tempoBounds = header.removeFromRight (168).reduced (0, 4);
+    header.removeFromRight (12);
+    rootBounds = header.removeFromRight (136).reduced (0, 4);
+    rootPill.setBounds (rootBounds);
+    if (rootEditor != nullptr) rootEditor->setBounds (rootBounds);
     header.removeFromRight (12);
     nextButton.setBounds (header.removeFromRight (30).reduced (0, 4));
     header.removeFromRight (4);
@@ -552,7 +612,7 @@ void OneShooterEditor::resized()
     header.removeFromRight (8);
     namePill = header.reduced (0, 4);
     auto np = namePill.reduced (12, 0);
-    sampleFolder.setBounds (np.removeFromRight (np.getWidth() / 2));
+    sampleFolder.setBounds (np.removeFromRight (np.getWidth() * 2 / 5));
     sampleName.setBounds (np);
 
     r.removeFromTop (12);
@@ -571,23 +631,26 @@ void OneShooterEditor::resized()
 
     auto inner = [] (juce::Rectangle<int> b) { return b.reduced (10, 8).withTrimmedTop (26); };
 
-    // Reihe A: Sample 3 | Pitch 2 | Amp 4
+    // Reihe A: Sample 3 | Pitch 2 | Amp 4 | Tone 3
     {
         const int gap = 12;
-        const int unit = (rowA.getWidth() - 2 * gap) / 9;
+        const int unit = (rowA.getWidth() - 3 * gap) / 12;
         mSample.bounds = rowA.removeFromLeft (unit * 3); rowA.removeFromLeft (gap);
         mPitch.bounds  = rowA.removeFromLeft (unit * 2); rowA.removeFromLeft (gap);
-        mAmp.bounds    = rowA;
+        mAmp.bounds    = rowA.removeFromLeft (unit * 4); rowA.removeFromLeft (gap);
+        mTone.bounds   = rowA;
         layoutKnobs (inner (mSample.bounds), { &kStart, &kLength, &kTranspose });
         chromaticButton.setBounds (mSample.bounds.getRight() - 122, mSample.bounds.getY() + 8, 110, 24);
         layoutKnobs (inner (mPitch.bounds),  { &kPitchAmt, &kPitchDecay });
         layoutKnobs (inner (mAmp.bounds),    { &kAttack, &kHold, &kDecay, &kRelease });
+        polyButton.setBounds (mAmp.bounds.getRight() - 122, mAmp.bounds.getY() + 8, 110, 24);
+        layoutKnobs (inner (mTone.bounds),   { &kTone, &kLowCut, &kHighCut });
     }
 
-    // Reihe B: Sub 3 | Gate 3 | Clip 3 | Out 2.5
+    // Reihe B: Sub 3 | Gate 3 | Clip 3 | Out 3
     {
         const int gap = 12;
-        const float unit = (float) (rowB.getWidth() - 3 * gap) / 11.5f;
+        const float unit = (float) (rowB.getWidth() - 3 * gap) / 12.0f;
         mSub.bounds  = rowB.removeFromLeft ((int) (unit * 3)); rowB.removeFromLeft (gap);
         mDuck.bounds = rowB.removeFromLeft ((int) (unit * 3)); rowB.removeFromLeft (gap);
         mClip.bounds = rowB.removeFromLeft ((int) (unit * 3)); rowB.removeFromLeft (gap);
@@ -604,11 +667,15 @@ void OneShooterEditor::resized()
         clipHard.setBounds (toggles.getX(), ty + 6, toggles.getWidth(), 28);
         c.removeFromRight (8);
         layoutKnobs (c, { &kClipDrive });
+        clipAutoButton.setBounds (mClip.bounds.getRight() - 92, mClip.bounds.getY() + 8, 80, 24);
 
         auto o = inner (mOut.bounds);
         outMeter.setBounds (o.removeFromRight (22).withTrimmedTop (4));
-        o.removeFromRight (12);
+        o.removeFromRight (8);
+        limMeter.setBounds (o.removeFromRight (22).withTrimmedTop (4));
+        o.removeFromRight (10);
         layoutKnobs (o, { &kVelocity, &kGain });
+        limiterButton.setBounds (mOut.bounds.getRight() - 92, mOut.bounds.getY() + 8, 80, 24);
     }
 
     // Titel in der Clip-Karte zeigt GR an: Meter-Label
@@ -666,6 +733,7 @@ void OneShooterEditor::timerCallback()
     updateTimelineIfNeeded (false);
     updateInfo();
     clipMeter.setValue (processor.getClipReductionDb());
+    limMeter.setValue (processor.getLimitReductionDb());
     outMeter.setValue (processor.getOutputPeak());
     library.refreshStatus();
 }
@@ -691,6 +759,26 @@ void OneShooterEditor::updateTimelineIfNeeded (bool force)
 
 void OneShooterEditor::updateInfo()
 {
+    {
+        // Root-Pill
+        const int ov = processor.getRootOverride();
+        const float root = processor.getEffectiveRoot();
+        const bool hasSample = ! processor.getPeaks().isEmpty();
+        juce::String note = "--", mode;
+        if (ov == rootNone)                    mode = "off (C3)";
+        else if (root > noPitch + 1.0f)
+        {
+            const int n = (int) std::round (root);
+            note = PitchDetector::noteName (n);
+            const int cents = (int) std::round ((root - (float) n) * 100.0f);
+            mode = ov >= 0 ? juce::String ("manual")
+                 : processor.isRootFromFileName() ? juce::String ("name")
+                 : (std::abs (cents) >= 5 ? (cents > 0 ? "+" : "") + juce::String (cents) + " ct" : juce::String ("auto"));
+        }
+        else if (hasSample)                    mode = "no pitch";
+        rootPill.set (note, mode);
+    }
+
     const auto peaks = processor.getPeaks();
     sampleName.setText (peaks.isEmpty() ? juce::String ("No sample loaded") : peaks.name, juce::dontSendNotification);
     {
@@ -720,4 +808,92 @@ void OneShooterEditor::updateInfo()
     const double barQuarters = num * 4.0 / den;
     lengthCard.set (quarters * 4.0, quarters, sec * 1000.0, NoteValues::nearest (quarters, barQuarters),
                     juce::jmax (1, (int) std::round (num * 16.0 / den)));
+}
+
+//==============================================================================
+// Root-Note
+void OneShooterEditor::showRootMenu()
+{
+    const auto det = processor.getDetectedPitch();
+    const int ov = processor.getRootOverride();
+    const bool hasSample = ! processor.getPeaks().isEmpty();
+
+    juce::PopupMenu m;
+    m.addSectionHeader ("Root note (chromatic mode: this key = original pitch)");
+    m.addItem (1, det.tonal ? (processor.isRootFromFileName() ? "Auto (from file name: " : "Auto (detected ")
+                              + PitchDetector::noteName ((int) std::round (det.midi)) + ")"
+                            : juce::String (hasSample ? "Auto (no pitch detected)" : "Auto"), true, ov == rootAuto);
+    m.addItem (2, "Off (C3 = original pitch)", true, ov == rootNone);
+    m.addItem (3, "Type root note...  (or double-click)");
+    m.addSeparator();
+    for (int oct = -1; oct <= 6; ++oct)
+    {
+        juce::PopupMenu sub;
+        for (int n = 0; n < 12; ++n)
+        {
+            const int midi = (oct + 2) * 12 + n;
+            sub.addItem (100 + midi, PitchDetector::noteName (midi), true, ov == midi);
+        }
+        m.addSubMenu ("Octave " + juce::String (oct), sub, true, nullptr, ov >= (oct + 2) * 12 && ov < (oct + 3) * 12);
+    }
+
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&rootPill),
+                     [safe = juce::Component::SafePointer<OneShooterEditor> (this)] (int res)
+                     {
+                         if (safe == nullptr || res == 0) return;
+                         auto& self = *safe;
+                         if (res == 1)        self.processor.setRootOverride (rootAuto);
+                         else if (res == 2)   self.processor.setRootOverride (rootNone);
+                         else if (res == 3)   self.showRootEditor();
+                         else if (res >= 100) self.processor.setRootOverride (res - 100);
+                     });
+}
+
+void OneShooterEditor::showRootEditor()
+{
+    if (rootEditor == nullptr)
+    {
+        rootEditor = std::make_unique<juce::TextEditor>();
+        rootEditor->setFont (juce::FontOptions (13.0f, juce::Font::bold));
+        rootEditor->setColour (juce::TextEditor::backgroundColourId, inset);
+        rootEditor->setColour (juce::TextEditor::textColourId, text);
+        rootEditor->setColour (juce::TextEditor::outlineColourId, accent2);
+        rootEditor->setColour (juce::TextEditor::focusedOutlineColourId, accent2);
+        rootEditor->setJustification (juce::Justification::centredLeft);
+        rootEditor->setIndents (8, 4);
+        rootEditor->setTextToShowWhenEmpty ("e.g. F#2, Eb1, auto", textDim);
+        rootEditor->onReturnKey = [this] { applyRootText(); };
+        rootEditor->onEscapeKey = [this] { rootEditor->setVisible (false); };
+        rootEditor->onFocusLost = [this] { rootEditor->setVisible (false); };
+        addChildComponent (*rootEditor);
+    }
+    const float root = processor.getEffectiveRoot();
+    rootEditor->setText (root > noPitch + 1.0f ? PitchDetector::noteName ((int) std::round (root)) : juce::String(),
+                         juce::dontSendNotification);
+    rootEditor->setBounds (rootBounds);
+    rootEditor->setVisible (true);
+    rootEditor->grabKeyboardFocus();
+    rootEditor->selectAll();
+}
+
+void OneShooterEditor::applyRootText()
+{
+    const auto t = rootEditor->getText().trim().toLowerCase();
+    if (t == "auto" || t.isEmpty())
+        processor.setRootOverride (rootAuto);
+    else if (t == "off" || t == "-" || t == "none")
+        processor.setRootOverride (rootNone);
+    else
+    {
+        const int midi = PitchDetector::parseNoteName (t);
+        if (midi < 0)
+        {
+            rootEditor->setColour (juce::TextEditor::outlineColourId, clip);   // ungueltig
+            rootEditor->repaint();
+            return;
+        }
+        processor.setRootOverride (midi);
+    }
+    rootEditor->setColour (juce::TextEditor::outlineColourId, accent2);
+    rootEditor->setVisible (false);
 }

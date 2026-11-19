@@ -20,6 +20,8 @@ public:
     void step (int delta);
     // Ordner des geladenen Samples relativ zur Library (leer wenn nicht im Index)
     juce::String folderOfLoaded() const;
+    // Alle One-Shots eines importierten Ordners, Unterordner aufgeloest
+    std::vector<SampleLibrary::Entry> siblingsOf (const juce::String& root) const;
 
 private:
     struct Item

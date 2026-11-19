@@ -95,7 +95,8 @@ private:
     juce::TextButton loadButton { "Load" };
     juce::TextButton prevButton { "<" }, nextButton { ">" };
     juce::Label sampleName, sampleFolder;
-    juce::ToggleButton chromaticButton;
+    juce::ToggleButton chromaticButton, libraryButton;
+    void setLibraryVisible (bool show);
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> chromaticAtt;
     juce::TooltipWindow tooltips { this, 500 };
 
@@ -104,17 +105,18 @@ private:
     Knob kAttack, kHold, kDecay, kRelease;
     Knob kSubVol, kSubTune, kSubDecay;
     Knob kClipDrive;
+    Knob kDuckSync, kDuckFade, kDuckCurve;
     Knob kVelocity, kGain;
 
     juce::ToggleButton clipOn { "ON" }, clipHard { "HARD" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> clipOnAtt, clipHardAtt;
     Meter clipMeter, outMeter;
 
-    Module mSample, mPitch, mAmp, mSub, mClip, mOut;
+    Module mSample, mPitch, mAmp, mSub, mDuck, mClip, mOut;
 
     std::unique_ptr<juce::FileChooser> chooser;
     juce::int64 lastTimelineHash = 0;
-    juce::Rectangle<int> tempoBounds, namePill;
+    juce::Rectangle<int> tempoBounds, namePill, logoArea;
     juce::String tempoText;
     KickTimeline timeline;
 

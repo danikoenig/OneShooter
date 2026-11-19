@@ -6,14 +6,10 @@ using namespace KickColours;
 
 namespace
 {
-    juce::String parentPath (const juce::String& path)
+    // Importierter Wurzelordner = erstes Segment des relativen Pfads
+    juce::String rootOf (const juce::String& folder)
     {
-        return path.containsChar ('/') ? path.upToLastOccurrenceOf ("/", false, false) : juce::String();
-    }
-
-    bool isInside (const juce::String& folder, const juce::String& path)
-    {
-        return path.isEmpty() || folder == path || folder.startsWith (path + "/");
+        return folder.upToFirstOccurrenceOf ("/", false, false);
     }
 
     void drawFolderIcon (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
@@ -100,7 +96,7 @@ void LibraryPanel::paint (juce::Graphics& g)
     const bool searching = search.getText().isNotEmpty();
     const juce::String crumb = searching ? juce::String ("Search results")
                                          : (currentPath.isEmpty() ? juce::String ("All folders")
-                                                                  : currentPath.replace ("/", "  /  "));
+                                                                  : currentPath);
     g.setColour (searching || currentPath.isEmpty() ? textDim : text);
     g.setFont (juce::FontOptions (11.5f, juce::Font::bold));
     g.drawText (crumb, crumbArea.withTrimmedLeft (10).withTrimmedRight (6), juce::Justification::centredLeft, true);
@@ -223,32 +219,24 @@ void LibraryPanel::rebuild()
     }
     else
     {
-        if (currentPath.isNotEmpty())
-            items.push_back ({ Item::up, "..", parentPath (currentPath), 0, {} });
-
-        std::map<juce::String, int> sub;
-        std::vector<SampleLibrary::Entry> here;
-        for (auto& e : all)
+        if (currentPath.isEmpty())
         {
-            if (! isInside (e.folder, currentPath))
-                continue;
-            if (e.folder == currentPath)
-            {
-                here.push_back (e);
-                continue;
-            }
-            const auto rest = currentPath.isEmpty() ? e.folder : e.folder.substring (currentPath.length() + 1);
-            sub[rest.upToFirstOccurrenceOf ("/", false, false)]++;
+            // Oberste Ebene: nur die importierten Ordner
+            std::map<juce::String, int> roots;
+            for (auto& e : all)
+                roots[rootOf (e.folder)]++;
+            std::vector<std::pair<juce::String, int>> folders (roots.begin(), roots.end());
+            std::sort (folders.begin(), folders.end(), [] (const auto& x, const auto& y) { return x.first.compareNatural (y.first) < 0; });
+            for (auto& f : folders)
+                items.push_back ({ Item::folder, f.first, f.first, f.second, {} });
         }
-
-        std::vector<std::pair<juce::String, int>> folders (sub.begin(), sub.end());
-        std::sort (folders.begin(), folders.end(), [] (const auto& a, const auto& b) { return a.first.compareNatural (b.first) < 0; });
-        for (auto& f : folders)
-            items.push_back ({ Item::folder, f.first, currentPath.isEmpty() ? f.first : currentPath + "/" + f.first, f.second, {} });
-
-        std::sort (here.begin(), here.end(), [] (const auto& a, const auto& b) { return a.name.compareNatural (b.name) < 0; });
-        for (auto& e : here)
-            items.push_back ({ Item::sample, e.name, e.folder, 0, e });
+        else
+        {
+            // Im Ordner: alle Samples flach, Unterordner aufgeloest
+            items.push_back ({ Item::up, "..", {}, 0, {} });
+            for (auto& e : siblingsOf (currentPath))
+                items.push_back ({ Item::sample, e.name, e.folder, 0, e });
+        }
     }
 
     lastAuditioned = -1;
@@ -282,7 +270,7 @@ void LibraryPanel::goUp()
     if (search.getText().isNotEmpty() || currentPath.isEmpty())
         return;
     const auto from = currentPath;
-    openFolder (parentPath (currentPath));
+    openFolder ({});
     for (int i = 0; i < (int) items.size(); ++i)
         if (items[(size_t) i].type == Item::folder && items[(size_t) i].path == from)
         {
@@ -347,6 +335,20 @@ void LibraryPanel::audition (int row)
     }
 }
 
+std::vector<SampleLibrary::Entry> LibraryPanel::siblingsOf (const juce::String& root) const
+{
+    std::vector<SampleLibrary::Entry> result;
+    for (auto& e : all)
+        if (rootOf (e.folder) == root)
+            result.push_back (e);
+    std::sort (result.begin(), result.end(), [] (const auto& a, const auto& b)
+    {
+        const int c = a.name.compareNatural (b.name);
+        return c != 0 ? c < 0 : a.folder.compareNatural (b.folder) < 0;
+    });
+    return result;
+}
+
 juce::String LibraryPanel::folderOfLoaded() const
 {
     const auto loaded = processor.getLoadedFile();
@@ -363,7 +365,7 @@ void LibraryPanel::revealLoaded()
         if (e.file == loaded)
         {
             if (search.getText().isEmpty())
-                currentPath = e.folder;
+                currentPath = rootOf (e.folder);
             return;
         }
 }
@@ -380,13 +382,8 @@ void LibraryPanel::step (int delta)
 
     if (inIndex)
     {
-        // One-Shots im selben Library-Ordner
-        std::vector<SampleLibrary::Entry> here;
-        for (auto& e : all)
-            if (e.folder == folder)
-                here.push_back (e);
-        std::sort (here.begin(), here.end(), [] (const auto& a, const auto& b) { return a.name.compareNatural (b.name) < 0; });
-        for (auto& e : here)
+        // Alle One-Shots im selben importierten Ordner (flach)
+        for (auto& e : siblingsOf (rootOf (folder)))
             siblings.push_back (e.file);
     }
     else
@@ -411,7 +408,7 @@ void LibraryPanel::step (int delta)
     if (loadAndPlay (siblings[(size_t) idx]))
     {
         if (inIndex && search.getText().isEmpty())
-            currentPath = folder;
+            currentPath = rootOf (folder);
         rebuild();
         if (lastAuditioned >= 0)
             list.scrollToEnsureRowIsOnscreen (lastAuditioned);

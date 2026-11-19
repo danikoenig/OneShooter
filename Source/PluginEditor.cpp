@@ -134,6 +134,19 @@ void KickLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b
         return;
     }
 
+    if (style == "sidebar")
+    {
+        g.setColour (on ? col.withAlpha (0.18f) : inset);
+        g.fillRoundedRectangle (r, 6.0f);
+        g.setColour (on ? col : (highlighted ? textDim : cardBorder.brighter (0.2f)));
+        g.drawRoundedRectangle (r, 6.0f, 1.2f);
+        auto ic = juce::Rectangle<float> (18.0f, 14.0f).withCentre (r.getCentre());
+        g.setColour (on ? text : textDim);
+        g.drawRoundedRectangle (ic, 2.0f, 1.5f);
+        g.fillRoundedRectangle (ic.withWidth (6.0f), 2.0f);
+        return;
+    }
+
     if (style == "keys")
     {
         // Mini-Keyboard wie in Bitwig
@@ -342,12 +355,20 @@ KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
     chromaticButton.setTooltip ("Chromatic mode: play the sample pitched across the keyboard (C3 = original pitch). "
                                 "Off: every key plays the sample at the same pitch.");
     addAndMakeVisible (chromaticButton);
+
+    libraryButton.getProperties().set ("style", "sidebar");
+    libraryButton.getProperties().set ("accent", accent.toString());
+    libraryButton.setTooltip ("Show / hide library");
+    libraryButton.setToggleState (processor.showLibrary, juce::dontSendNotification);
+    libraryButton.onClick = [this] { setLibraryVisible (libraryButton.getToggleState()); };
+    addAndMakeVisible (libraryButton);
     chromaticAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::chromatic, chromaticButton);
 
     mSample = { "SAMPLE",    accent, {} };
     mPitch  = { "PITCH ENV", pitch,  {} };
     mAmp    = { "AMP ENV",   env,    {} };
     mSub    = { "SUB",       sub,    {} };
+    mDuck   = { "DUCK",      duck,   {} };
     mClip   = { "CLIPPER",   clip,   {} };
     mOut    = { "OUTPUT",    accent2, {} };
 
@@ -364,6 +385,12 @@ KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
     setupKnob (kSubTune,    ParamIDs::subTune,    "Tune",      sub);
     setupKnob (kSubDecay,   ParamIDs::subDecay,   "Decay",     sub);
     setupKnob (kClipDrive,  ParamIDs::clipDrive,  "Drive",     clip);
+    setupKnob (kDuckSync,   ParamIDs::duckSync,   "Length",    duck);
+    setupKnob (kDuckFade,   ParamIDs::duckFade,   "Fade",      duck);
+    setupKnob (kDuckCurve,  ParamIDs::duckCurve,  "Curve",     duck);
+    kDuckSync.slider.setTooltip ("Cuts every hit to a tempo-synced length (follows the DAW tempo). Off = full length.");
+    kDuckFade.slider.setTooltip ("How much of the length is faded out");
+    kDuckCurve.slider.setTooltip ("Fade shape: 0 % = linear, 100 % = fast drop");
     setupKnob (kVelocity,   ParamIDs::velocity,   "Velocity",  accent2);
     setupKnob (kGain,       ParamIDs::gain,       "Gain",      accent2);
 
@@ -384,8 +411,9 @@ KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
     processor.addChangeListener (this);
 
     setResizable (true, true);
-    setResizeLimits (1100, 660, 1800, 1100);
-    setSize (1240, 720);
+    library.setVisible (processor.showLibrary);
+    setResizeLimits (processor.showLibrary ? 1180 : 880, 660, 1900, 1100);
+    setSize (processor.showLibrary ? 1340 : 1036, 720);
 
     updateTimelineIfNeeded (true);
     updateInfo();
@@ -427,8 +455,7 @@ void KickSamplerEditor::paint (juce::Graphics& g)
     g.fillAll();
 
     // Logo
-    auto header = getLocalBounds().reduced (14).withTrimmedLeft (library.getRight()).removeFromTop (40);
-    header.removeFromLeft (14);
+    auto header = logoArea;
     {
         // Fadenkreuz-Logo
         const auto lc = juce::Point<float> ((float) header.getX() + 12.0f, (float) header.getY() + 20.0f);
@@ -446,7 +473,7 @@ void KickSamplerEditor::paint (juce::Graphics& g)
     g.drawText ("by Dani Koenig", header.getX() + 34, header.getY() + 24, 200, 14, juce::Justification::centredLeft);
 
     // Modul-Karten
-    for (auto* m : { &mSample, &mPitch, &mAmp, &mSub, &mClip, &mOut })
+    for (auto* m : { &mSample, &mPitch, &mAmp, &mSub, &mDuck, &mClip, &mOut })
     {
         auto r = m->bounds.toFloat();
         g.setColour (card);
@@ -486,16 +513,35 @@ void KickSamplerEditor::layoutKnobs (juce::Rectangle<int> area, std::initializer
     }
 }
 
+void KickSamplerEditor::setLibraryVisible (bool show)
+{
+    if (show == processor.showLibrary)
+        return;
+    processor.showLibrary = show;
+    library.setVisible (show);
+    constexpr int libWidth = 290 + 14;
+    setResizeLimits (show ? 1180 : 880, 660, 1900, 1100);
+    setSize (juce::jlimit (show ? 1180 : 880, 1900, getWidth() + (show ? libWidth : -libWidth)), getHeight());
+    resized();
+    repaint();
+}
+
 void KickSamplerEditor::resized()
 {
     auto r = getLocalBounds().reduced (14);
 
-    library.setBounds (r.removeFromLeft (290));
-    r.removeFromLeft (14);
+    if (library.isVisible())
+    {
+        library.setBounds (r.removeFromLeft (290));
+        r.removeFromLeft (14);
+    }
 
     // Header
     auto header = r.removeFromTop (40);
-    header.removeFromLeft (240);
+    libraryButton.setBounds (header.removeFromLeft (36).reduced (0, 4));
+    header.removeFromLeft (12);
+    logoArea = header.removeFromLeft (200);
+    header.removeFromLeft (12);
     loadButton.setBounds (header.removeFromRight (130).reduced (0, 4));
     header.removeFromRight (12);
     tempoBounds = header.removeFromRight (190).reduced (0, 4);
@@ -538,19 +584,21 @@ void KickSamplerEditor::resized()
         layoutKnobs (inner (mAmp.bounds),    { &kAttack, &kHold, &kDecay, &kRelease });
     }
 
-    // Reihe B: Sub 3 | Clip 3 | Out 3
+    // Reihe B: Sub 3 | Duck 3 | Clip 3 | Out 2.5
     {
         const int gap = 12;
-        const int unit = (rowB.getWidth() - 2 * gap) / 9;
-        mSub.bounds  = rowB.removeFromLeft (unit * 3); rowB.removeFromLeft (gap);
-        mClip.bounds = rowB.removeFromLeft (unit * 3); rowB.removeFromLeft (gap);
+        const float unit = (float) (rowB.getWidth() - 3 * gap) / 11.5f;
+        mSub.bounds  = rowB.removeFromLeft ((int) (unit * 3)); rowB.removeFromLeft (gap);
+        mDuck.bounds = rowB.removeFromLeft ((int) (unit * 3)); rowB.removeFromLeft (gap);
+        mClip.bounds = rowB.removeFromLeft ((int) (unit * 3)); rowB.removeFromLeft (gap);
         mOut.bounds  = rowB;
         layoutKnobs (inner (mSub.bounds), { &kSubVol, &kSubTune, &kSubDecay });
+        layoutKnobs (inner (mDuck.bounds), { &kDuckSync, &kDuckFade, &kDuckCurve });
 
         auto c = inner (mClip.bounds);
         clipMeter.setBounds (c.removeFromRight (22).withTrimmedTop (4));
         c.removeFromRight (12);
-        auto toggles = c.removeFromRight (juce::jmin (120, c.getWidth() / 2));
+        auto toggles = c.removeFromRight (juce::jmin (100, c.getWidth() / 2));
         const int ty = toggles.getCentreY();
         clipOn.setBounds (toggles.getX(), ty - 36, toggles.getWidth(), 28);
         clipHard.setBounds (toggles.getX(), ty + 6, toggles.getWidth(), 28);
@@ -626,7 +674,8 @@ void KickSamplerEditor::updateTimelineIfNeeded (bool force)
 {
     const char* ids[] = { ParamIDs::start, ParamIDs::length, ParamIDs::transpose, ParamIDs::pitchAmt,
                           ParamIDs::pitchDecay, ParamIDs::attack, ParamIDs::hold, ParamIDs::decay,
-                          ParamIDs::subVol, ParamIDs::subDecay };
+                          ParamIDs::subVol, ParamIDs::subDecay, ParamIDs::duckSync, ParamIDs::duckFade,
+                          ParamIDs::duckCurve };
     juce::int64 h = (juce::int64) (processor.getHostBpm() * 1000.0) * 31 + processor.getTimeSigNumerator();
     for (auto* id : ids)
         h = h * 1000003 + (juce::int64) (processor.apvts.getRawParameterValue (id)->load() * 100000.0f);

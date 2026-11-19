@@ -17,8 +17,10 @@ VST3-Instrument für macOS (Apple Silicon), inspiriert von Abletons Drum Sampler
 - Release beim Note-Off (Standard: Off = One-Shot)
 - Sub-Oszillator: Volume, Tune (Hz + Notenname), Decay
 - Clipper im KNOCK-Stil: Drive, Soft/Hard, 4x Oversampling, Gain-Reduction-Meter
-- Library: Ordner aufs Plugin ziehen. Alle One-Shots (auch in Unterordnern) werden erkannt
-  und indexiert, in der Original-Ordnerstruktur. Suche über alles, Vorhören per Klick oder Pfeiltasten,
+- Duck (wie Kickstart): kürzt jeden Hit auf eine Länge synchron zum DAW-Tempo
+  (Off, 1/32 bis 1 bar), mit Fade und Curve. Wirkt auf Sample und Sub.
+- Library: ein- und ausblendbar (Schalter oben links). Ordner aufs Plugin ziehen. Alle One-Shots (auch in Unterordnern) werden erkannt
+  und indexiert. Pro importiertem Ordner werden alle Samples flach angezeigt (Unterordner aufgelöst). Suche über alles, Vorhören per Klick oder Pfeiltasten,
   Prev/Next-Pfeile im Header. Samples werden nicht kopiert oder verschoben. Index liegt unter
   `~/Library/Application Support/One Shooter/library.json`
 - Alle Parameter automatisierbar, Sample-Pfad wird im Projekt gespeichert

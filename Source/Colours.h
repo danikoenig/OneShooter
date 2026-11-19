@@ -14,6 +14,7 @@ namespace KickColours
     const juce::Colour clip          { 0xffff4d5e };   // Clipper = Rot
     const juce::Colour pitch         { 0xffb388ff };   // Pitch = Violett
     const juce::Colour env           { 0xff69f0ae };   // Envelope = Gruen
+    const juce::Colour duck          { 0xfff06292 };   // Duck = Pink
     const juce::Colour waveDim       { 0xff3a3530 };
     const juce::Colour text          { 0xffeceef2 };
     const juce::Colour textDim       { 0xff7d828c };

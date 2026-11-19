@@ -54,8 +54,9 @@ KickSamplerProcessor::KickSamplerProcessor()
                           ParamIDs::pitchDecay, ParamIDs::attack, ParamIDs::hold, ParamIDs::decay,
                           ParamIDs::release, ParamIDs::subVol, ParamIDs::subTune, ParamIDs::subDecay,
                           ParamIDs::clipOn, ParamIDs::clipHard, ParamIDs::clipDrive, ParamIDs::velocity,
-                          ParamIDs::gain, ParamIDs::chromatic };
-    for (int i = 0; i < 18; ++i)
+                          ParamIDs::gain, ParamIDs::chromatic, ParamIDs::duckSync, ParamIDs::duckFade,
+                          ParamIDs::duckCurve };
+    for (int i = 0; i < 21; ++i)
     {
         p[i] = apvts.getRawParameterValue (ids[i]);
         jassert (p[i] != nullptr);
@@ -105,6 +106,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout KickSamplerProcessor::create
               [] (float v, int) { return "+" + String (v, 1) + " dB"; });
 
     layout.add (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::chromatic, 1 }, "Chromatic", false));
+    layout.add (std::make_unique<AudioParameterChoice> (ParameterID { ParamIDs::duckSync, 1 }, "Duck Length", duckChoices, 0));
+    addFloat (ParamIDs::duckFade,   "Duck Fade",   { 0.0f, 1.0f }, 0.3f, pct);
+    addFloat (ParamIDs::duckCurve,  "Duck Curve",  { 0.0f, 1.0f }, 0.5f, pct);
     addFloat (ParamIDs::velocity,   "Velocity",    { 0.0f, 1.0f }, 0.5f, pct);
     addFloat (ParamIDs::gain,       "Gain",        { -36.0f, 12.0f, 0.1f }, 0.0f, db);
 
@@ -211,6 +215,25 @@ WaveformPeaks KickSamplerProcessor::getPeaks() const
     return peaks;
 }
 
+double KickSamplerProcessor::duckLengthSeconds() const
+{
+    const double barQ = timeSigNum.load() * 4.0 / juce::jmax (1, timeSigDen.load());
+    const double q = duckQuarters ((int) std::round (param (pDuckSync)), barQ);
+    return q > 0.0 ? q * 60.0 / juce::jmax (20.0, hostBpm.load()) : 0.0;
+}
+
+// Duck-Gain zum Zeitpunkt t (Sekunden seit Note-On)
+static float duckGainAt (double t, double len, float fade, float curve)
+{
+    if (len <= 0.0)  return 1.0f;
+    if (t >= len)    return 0.0f;
+    const double fadeLen = juce::jmax (0.001, (double) fade * len);
+    const double fadeStart = len - fadeLen;
+    if (t <= fadeStart) return 1.0f;
+    const double x = (t - fadeStart) / fadeLen;               // 0..1
+    return (float) std::pow (1.0 - x, 1.0 + (double) curve * 4.0);
+}
+
 //==============================================================================
 KickTimeline KickSamplerProcessor::computeTimeline (double dtSec) const
 {
@@ -220,9 +243,14 @@ KickTimeline KickSamplerProcessor::computeTimeline (double dtSec) const
     const int n = loadedNumSamples.load();
     const double fileSr = loadedSampleRate.load();
 
+    const double duckLen = duckLengthSeconds();
+    const float duckFade = param (pDuckFade), duckCurve = param (pDuckCurve);
+
     // Sub-Laenge
     if (param (pSubVol) > 0.0001f)
         tl.subSeconds = param (pSubDecay) / 1000.0;
+    if (duckLen > 0.0)
+        tl.subSeconds = juce::jmin (tl.subSeconds, duckLen);
 
     if (n <= 0)
         return tl;
@@ -247,11 +275,12 @@ KickTimeline KickSamplerProcessor::computeTimeline (double dtSec) const
         if (t < att)               env = (float) (t / juce::jmax (1e-9, att));
         else if (t < att + hold)   env = 1.0f;
         else                       env = (float) std::exp (decK * (t - att - hold));
+        env *= duckGainAt (t, duckLen, duckFade, duckCurve);
 
         tl.sourcePos.push_back (pos / n);
         tl.ampEnv.push_back (env);
 
-        if (! sampleDone && (pos >= end || (t > att + hold && env <= envFloor)))
+        if (! sampleDone && (pos >= end || (t > att + hold && env <= envFloor) || (duckLen > 0.0 && t >= duckLen)))
         {
             tl.sampleSeconds = t;
             sampleDone = true;
@@ -356,6 +385,9 @@ void KickSamplerProcessor::renderVoices (juce::AudioBuffer<float>& out, int star
     const double subFreq       = param (pSubTune);
     const float  subAttackStep = 1.0f / (float) juce::jmax (1.0, sr * subAttackMs / 1000.0);
     const double endFade       = sr * 0.002;
+    const double duckLen       = duckLengthSeconds();
+    const float  duckFade      = param (pDuckFade);
+    const float  duckCurve     = param (pDuckCurve);
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -368,7 +400,14 @@ void KickSamplerProcessor::renderVoices (juce::AudioBuffer<float>& out, int star
 
             const float pe = v.pitchEnv > envFloor ? v.pitchEnv : 0.0f;
             v.pitchEnv *= pitchCoeff;
-            const float common = v.velocityGain * v.fadeGain * v.releaseGain;
+            const float duck = duckGainAt (v.ageSamples / sr, duckLen, duckFade, duckCurve);
+            v.ageSamples += 1.0;
+            if (duckLen > 0.0 && v.ageSamples / sr >= duckLen)
+            {
+                v.active = false;   // Duck-Ende erreicht
+                continue;
+            }
+            const float common = v.velocityGain * v.fadeGain * v.releaseGain * duck;
 
             // ---- Sample-Teil
             if (v.sampleActive && s == nullptr)
@@ -593,6 +632,7 @@ void KickSamplerProcessor::getStateInformation (juce::MemoryBlock& destData)
         path = loadedFile.getFullPathName();
     }
     state.setProperty ("samplePath", path, nullptr);
+    state.setProperty ("showLibrary", showLibrary, nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -607,6 +647,7 @@ void KickSamplerProcessor::setStateInformation (const void* data, int sizeInByte
             return;
 
         const juce::String path = state.getProperty ("samplePath").toString();
+        showLibrary = (bool) state.getProperty ("showLibrary", true);
         apvts.replaceState (state);
 
         if (path.isNotEmpty())

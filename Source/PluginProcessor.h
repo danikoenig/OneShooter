@@ -35,10 +35,23 @@ namespace ParamIDs
     inline constexpr const char* gain       = "gain";
     // Chromatisch spielen (Root C3 = MIDI 60)
     inline constexpr const char* chromatic  = "chromatic";
+    // Duck: kuerzt den Hit tempo-synchron (wie Kickstart)
+    inline constexpr const char* duckSync   = "duckSync";
+    inline constexpr const char* duckFade   = "duckFade";
+    inline constexpr const char* duckCurve  = "duckCurve";
 }
 
 // Release-Wert ab dem der Release aus ist (One-Shot)
 inline constexpr float releaseOffValue = 5000.0f;
+
+// Duck-Laengen; Index 0 = Off. Laenge in Viertelnoten (-1 = ein Takt)
+inline const juce::StringArray duckChoices { "Off", "1/32", "1/16", "1/16.", "1/8", "1/8.", "1/4", "1/4.", "1/2", "1 bar" };
+inline double duckQuarters (int index, double barQuarters)
+{
+    static const double q[] = { 0.0, 0.125, 0.25, 0.375, 0.5, 0.75, 1.0, 1.5, 2.0, -1.0 };
+    if (index <= 0 || index > 9) return 0.0;
+    return q[index] < 0.0 ? barQuarters : q[index];
+}
 
 struct SampleData
 {
@@ -114,6 +127,8 @@ public:
     // Vorhoeren aus der Library (spielt das Sample einmal ab)
     void   triggerPreview()               { previewRequested = true; }
     SampleLibrary& getLibrary()           { return *library; }
+    // Library-Seitenleiste sichtbar (wird im Projekt gespeichert)
+    bool   showLibrary = true;
     juce::File getLoadedFile() const      { const juce::ScopedLock sl (peaksLock); return loadedFile; }
 
     // Simuliert den Kick-Verlauf (Pitch-Envelope, Amp-Envelope, Sub) mit den aktuellen Parametern
@@ -150,6 +165,7 @@ private:
         float  fadeGain = 1.0f;     // Choke
         float  fadeStep = 0.0f;
         juce::uint32 age = 0;
+        double ageSamples = 0.0;     // Samples seit Note-On (fuer Duck)
     };
 
     void startVoice (int note, int midiVelocity, const SampleData* s);
@@ -186,10 +202,11 @@ private:
     std::atomic<int>    loadedNumSamples { 0 };
     std::atomic<double> loadedSampleRate { 44100.0 };
 
-    std::atomic<float>* p[18] {};
+    std::atomic<float>* p[21] {};
     enum P { pStart, pLength, pTranspose, pPitchAmt, pPitchDecay, pAttack, pHold, pDecay, pRelease,
-             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain, pChromatic };
+             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain, pChromatic, pDuckSync, pDuckFade, pDuckCurve };
     float param (P i) const { return p[i]->load(); }
+    double duckLengthSeconds() const;   // 0 = aus
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KickSamplerProcessor)
 };

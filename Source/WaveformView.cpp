@@ -1,5 +1,6 @@
 #include "WaveformView.h"
 #include "Colours.h"
+#include "NoteValues.h"
 #include <cmath>
 
 using namespace KickColours;
@@ -36,7 +37,7 @@ float WaveformView::endFrac() const
 
 juce::Rectangle<float> WaveformView::waveArea() const
 {
-    return getLocalBounds().toFloat().reduced (10.0f, 0.0f).withTrimmedTop (22.0f).withTrimmedBottom (8.0f);
+    return getLocalBounds().toFloat().reduced (10.0f, 0.0f).withTrimmedTop (26.0f).withTrimmedBottom (8.0f);
 }
 
 float WaveformView::xForFrac (float f) const
@@ -94,9 +95,9 @@ void WaveformView::paint (juce::Graphics& g)
     {
         g.setColour (textDim);
         g.setFont (juce::FontOptions (16.0f));
-        g.drawFittedText ("Kick-Sample hierher ziehen", getLocalBounds().translated (0, -10), juce::Justification::centred, 1);
+        g.drawFittedText ("Drop a sample here", getLocalBounds().translated (0, -10), juce::Justification::centred, 1);
         g.setFont (juce::FontOptions (12.0f));
-        g.drawFittedText ("WAV  AIFF  FLAC  MP3", getLocalBounds().translated (0, 14), juce::Justification::centred, 1);
+        g.drawFittedText ("WAV  AIFF  FLAC  MP3   or a folder for the library", getLocalBounds().translated (0, 14), juce::Justification::centred, 1);
         return;
     }
 
@@ -105,7 +106,7 @@ void WaveformView::paint (juce::Graphics& g)
     const float xs = xForFrac (startFrac());
     const float xe = xForFrac (endFrac());
 
-    // ---- Beat-Raster (nach Timeline, inkl. Pitch-Envelope)
+    // ---- Raster in Notenwerten ab Start (inkl. Pitch-Envelope)
     const double bpm = juce::jmax (20.0, processor.getHostBpm());
     const double sixteenthSec = 60.0 / bpm / 4.0;
     const int num = processor.getTimeSigNumerator();
@@ -114,28 +115,55 @@ void WaveformView::paint (juce::Graphics& g)
 
     if (! timeline.sourcePos.empty())
     {
-        g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
-        float lastX = -100.0f;
+        // Positionen aller 16tel bestimmen
+        std::vector<float> xs16;
         for (int k = 1; ; ++k)
         {
             const double idx = k * sixteenthSec / timeline.dt;
             if (idx >= (double) timeline.sourcePos.size() - 1)
                 break;
-            const float x = xForFrac ((float) timeline.sourcePos[(size_t) idx]);
-            if (x - lastX < 3.0f && k % 4 != 0)
-                continue;
-            lastX = x;
+            xs16.push_back (xForFrac ((float) timeline.sourcePos[(size_t) idx]));
+        }
 
+        // Beschriftungs-Abstand: so fein wie Platz ist
+        const float avg = xs16.size() >= 2 ? (xs16.back() - xForFrac (startFrac())) / (float) xs16.size() : 100.0f;
+        int step = 1;
+        while (step < perBar * 4 && avg * (float) step < 34.0f)
+            step *= 2;
+
+        // Lineal oben
+        auto ruler = juce::Rectangle<float> (a.getX(), 0.0f, a.getWidth(), a.getY() - 2.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.03f));
+        g.fillRect (ruler.withTrimmedLeft (xs - a.getX()));
+
+        g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+        float lastLabelRight = -1000.0f, lastLineX = -100.0f;
+        for (int k = 1; k <= (int) xs16.size(); ++k)
+        {
+            const float x = xs16[(size_t) k - 1];
             const bool isBar = k % perBar == 0;
-            const bool isBeat = k % 4 == 0;
-            g.setColour (juce::Colours::white.withAlpha (isBar ? 0.35f : isBeat ? 0.16f : 0.06f));
-            g.drawVerticalLine ((int) x, a.getY() - 4.0f, a.getBottom());
+            const bool isQuarter = k % 4 == 0;
+            const bool isEighth = k % 2 == 0;
 
-            if (isBar || isBeat)
+            if (x - lastLineX < 2.5f && ! isQuarter)
+                continue;
+            lastLineX = x;
+
+            const float alpha = isBar ? 0.42f : isQuarter ? 0.22f : isEighth ? 0.12f : 0.06f;
+            g.setColour (juce::Colours::white.withAlpha (alpha));
+            g.drawVerticalLine ((int) x, a.getY() - (isQuarter ? 8.0f : 4.0f), a.getBottom());
+
+            if (k % step == 0)
             {
-                g.setColour (isBar ? text : textDim);
-                const juce::String lbl = juce::String (k / perBar + 1) + "." + juce::String ((k % perBar) / 4 + 1);
-                g.drawText (lbl, (int) x + 4, 4, 40, 14, juce::Justification::left);
+                const auto lbl = NoteValues::sixteenthsLabel (k, perBar);
+                const float tw = (float) juce::GlyphArrangement::getStringWidthInt (g.getCurrentFont(), lbl);
+                const float lx = x - tw * 0.5f;
+                if (lx > lastLabelRight + 6.0f && lx + tw < (float) getWidth() - 4.0f)
+                {
+                    g.setColour (isBar ? accent2 : isQuarter ? text : textDim);
+                    g.drawText (lbl, juce::Rectangle<float> (lx, 3.0f, tw + 2.0f, 14.0f), juce::Justification::centred);
+                    lastLabelRight = lx + tw;
+                }
             }
         }
     }

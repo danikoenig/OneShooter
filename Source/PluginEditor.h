@@ -31,15 +31,18 @@ private:
     float value = 0.0f;
 };
 
-// Info-Karte mit der Kick-Laenge
+// Info-Karte: Laenge als Notenwert + 16tel-Raster
 class LengthCard : public juce::Component
 {
 public:
-    void set (const juce::String& big, const juce::StringArray& lines, const juce::String& tempo);
+    void set (double sixteenths, double beats, double ms, const juce::String& note, int perBar);
+    void clear();
     void paint (juce::Graphics&) override;
 private:
-    juce::String bigText, tempoText;
-    juce::StringArray detail;
+    bool hasValue = false;
+    double sixteenths = 0.0, beats = 0.0, ms = 0.0;
+    juce::String note;
+    int perBar = 16;
 };
 
 class KickSamplerEditor : public juce::AudioProcessorEditor,
@@ -89,8 +92,12 @@ private:
     LibraryPanel library;
     WaveformView waveform;
     LengthCard lengthCard;
-    juce::TextButton loadButton { "Sample laden" };
-    juce::Label sampleName;
+    juce::TextButton loadButton { "Load" };
+    juce::TextButton prevButton { "<" }, nextButton { ">" };
+    juce::Label sampleName, sampleFolder;
+    juce::ToggleButton chromaticButton;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> chromaticAtt;
+    juce::TooltipWindow tooltips { this, 500 };
 
     Knob kStart, kLength, kTranspose;
     Knob kPitchAmt, kPitchDecay;
@@ -107,7 +114,7 @@ private:
 
     std::unique_ptr<juce::FileChooser> chooser;
     juce::int64 lastTimelineHash = 0;
-    juce::Rectangle<int> tempoBounds;
+    juce::Rectangle<int> tempoBounds, namePill;
     juce::String tempoText;
     KickTimeline timeline;
 

@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "Colours.h"
+#include "NoteValues.h"
 #include <cmath>
 
 using namespace KickColours;
@@ -133,6 +134,31 @@ void KickLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b
         return;
     }
 
+    if (style == "keys")
+    {
+        // Mini-Keyboard wie in Bitwig
+        g.setColour (on ? col.withAlpha (0.2f) : inset);
+        g.fillRoundedRectangle (r, 5.0f);
+        g.setColour (on ? col : (highlighted ? textDim : cardBorder.brighter (0.2f)));
+        g.drawRoundedRectangle (r, 5.0f, 1.2f);
+
+        auto kb = juce::Rectangle<float> (26.0f, 14.0f).withCentre ({ r.getX() + 19.0f, r.getCentreY() });
+        const float kw = kb.getWidth() / 5.0f;
+        for (int i = 0; i < 5; ++i)
+        {
+            g.setColour (on ? text : textDim);
+            g.fillRect (kb.getX() + (float) i * kw + 0.5f, kb.getY(), kw - 1.0f, kb.getHeight());
+        }
+        g.setColour (on ? bgBottom : inset);
+        for (int i : { 1, 2, 4 })
+            g.fillRect (kb.getX() + (float) i * kw - kw * 0.3f, kb.getY(), kw * 0.6f, kb.getHeight() * 0.6f);
+
+        g.setColour (on ? text : textDim);
+        g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+        g.drawText (on ? "CHROMATIC" : "ONE KEY", r.withTrimmedLeft (36.0f), juce::Justification::centredLeft);
+        return;
+    }
+
     // Power-Pill
     g.setColour (on ? col.withAlpha (0.18f) : inset);
     g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
@@ -198,11 +224,16 @@ void Meter::paint (juce::Graphics& g)
 }
 
 //==============================================================================
-void LengthCard::set (const juce::String& big, const juce::StringArray& lines, const juce::String& tempo)
+void LengthCard::clear()
 {
-    if (big != bigText || lines != detail || tempo != tempoText)
+    if (hasValue) { hasValue = false; repaint(); }
+}
+
+void LengthCard::set (double s16, double b, double m, const juce::String& n, int pb)
+{
+    if (! hasValue || std::abs (s16 - sixteenths) > 0.005 || n != note || pb != perBar || std::abs (m - ms) > 0.5)
     {
-        bigText = big; detail = lines; tempoText = tempo;
+        hasValue = true; sixteenths = s16; beats = b; ms = m; note = n; perBar = juce::jmax (1, pb);
         repaint();
     }
 }
@@ -220,52 +251,58 @@ void LengthCard::paint (juce::Graphics& g)
     g.fillEllipse ((float) inner.getX(), (float) inner.getY() + 5.0f, 7.0f, 7.0f);
     g.setColour (text);
     g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
-    g.drawText (juce::String::fromUTF8 ("KICK-LÄNGE"), inner.removeFromTop (18).withTrimmedLeft (14), juce::Justification::centredLeft);
+    g.drawText ("LENGTH", inner.removeFromTop (18).withTrimmedLeft (14), juce::Justification::centredLeft);
 
-    inner.removeFromTop (10);
+    inner.removeFromTop (6);
     g.setColour (accent2);
     g.setFont (juce::FontOptions (34.0f, juce::Font::bold));
-    g.drawText (bigText, inner.removeFromTop (42), juce::Justification::centredLeft);
+    g.drawText (hasValue ? juce::String::fromUTF8 ("\xe2\x89\x88 ") + note : juce::String ("--"),
+                inner.removeFromTop (42), juce::Justification::centredLeft);
+
+    // 16tel-Raster (ein Takt), gefuellt bis zur Laenge
+    inner.removeFromTop (4);
+    auto grid = inner.removeFromTop (18).toFloat();
+    const int cells = perBar;
+    const float gap = 2.0f;
+    const float cw = (grid.getWidth() - gap * (float) (cells - 1)) / (float) cells;
+    const double inBar = hasValue ? std::fmod (sixteenths, (double) cells) : 0.0;
+    const int fullBars = hasValue ? (int) (sixteenths / cells) : 0;
+    for (int i = 0; i < cells; ++i)
+    {
+        auto c = juce::Rectangle<float> (grid.getX() + (float) i * (cw + gap), grid.getY(), cw, grid.getHeight());
+        g.setColour (i % 4 == 0 ? knobTrack.brighter (0.15f) : knobTrack);
+        g.fillRoundedRectangle (c, 2.0f);
+        const double fill = (fullBars > 0 && inBar < 0.01) ? 1.0 : juce::jlimit (0.0, 1.0, inBar - i);
+        if (fill > 0.0)
+        {
+            g.setColour (accent);
+            g.fillRoundedRectangle (c.withWidth (c.getWidth() * (float) fill), 2.0f);
+        }
+    }
+    inner.removeFromTop (3);
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (10.0f));
+    auto lbl = inner.removeFromTop (14);
+    g.drawText ("1 bar in 1/16", lbl, juce::Justification::centredLeft);
+    if (fullBars > 0)
+    {
+        g.setColour (accent2);
+        g.drawText ("+" + juce::String (fullBars) + (fullBars == 1 ? " bar" : " bars"), lbl, juce::Justification::centredRight);
+    }
 
     inner.removeFromTop (8);
     g.setFont (juce::FontOptions (13.0f));
-    for (auto& l : detail)
+    auto row = [&] (const juce::String& k, const juce::String& v)
     {
-        auto row = inner.removeFromTop (22);
-        const auto key = l.upToFirstOccurrenceOf ("|", false, false);
-        const auto val = l.fromFirstOccurrenceOf ("|", false, false);
+        auto rr = inner.removeFromTop (21);
         g.setColour (textDim);
-        g.drawText (key, row, juce::Justification::centredLeft);
+        g.drawText (k, rr, juce::Justification::centredLeft);
         g.setColour (text);
-        g.drawText (val, row, juce::Justification::centredRight);
-    }
-
-}
-
-//==============================================================================
-namespace
-{
-    juce::String nearestNoteValue (double quarters, double barQuarters)
-    {
-        struct NV { double q; const char* name; };
-        const NV values[] = {
-            { 0.0625, "1/64" }, { 0.125, "1/32" }, { 0.1875, "1/32." }, { 0.25, "1/16" }, { 0.375, "1/16." },
-            { 0.5, "1/8" }, { 0.75, "1/8." }, { 1.0, "1/4" }, { 1.5, "1/4." }, { 2.0, "1/2" }, { 3.0, "1/2." },
-        };
-        double bestDist = 1e9;
-        juce::String best;
-        for (auto& v : values)
-        {
-            const double d = std::abs (std::log (quarters / v.q));
-            if (d < bestDist) { bestDist = d; best = v.name; }
-        }
-        for (int bars = 1; bars <= 8; bars *= 2)
-        {
-            const double d = std::abs (std::log (quarters / (bars * barQuarters)));
-            if (d < bestDist) { bestDist = d; best = juce::String (bars) + (bars == 1 ? " Takt" : " Takte"); }
-        }
-        return best;
-    }
+        g.drawText (v, rr, juce::Justification::centredRight);
+    };
+    row ("Sixteenths", hasValue ? juce::String (sixteenths, 1) : "--");
+    row ("Beats",      hasValue ? juce::String (beats, 2) : "--");
+    row ("Duration",   hasValue ? juce::String (juce::roundToInt (ms)) + " ms" : "--");
 }
 
 KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
@@ -285,7 +322,27 @@ KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
     sampleName.setFont (juce::FontOptions (14.0f, juce::Font::bold));
     sampleName.setColour (juce::Label::textColourId, text);
     sampleName.setJustificationType (juce::Justification::centredLeft);
+    sampleName.setMinimumHorizontalScale (1.0f);
     addAndMakeVisible (sampleName);
+
+    sampleFolder.setFont (juce::FontOptions (11.0f));
+    sampleFolder.setColour (juce::Label::textColourId, textDim);
+    sampleFolder.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (sampleFolder);
+
+    prevButton.setTooltip ("Previous sample in this folder");
+    nextButton.setTooltip ("Next sample in this folder");
+    prevButton.onClick = [this] { library.step (-1); };
+    nextButton.onClick = [this] { library.step (+1); };
+    addAndMakeVisible (prevButton);
+    addAndMakeVisible (nextButton);
+
+    chromaticButton.getProperties().set ("style", "keys");
+    chromaticButton.getProperties().set ("accent", accent.toString());
+    chromaticButton.setTooltip ("Chromatic mode: play the sample pitched across the keyboard (C3 = original pitch). "
+                                "Off: every key plays the sample at the same pitch.");
+    addAndMakeVisible (chromaticButton);
+    chromaticAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::chromatic, chromaticButton);
 
     mSample = { "SAMPLE",    accent, {} };
     mPitch  = { "PITCH ENV", pitch,  {} };
@@ -372,14 +429,18 @@ void KickSamplerEditor::paint (juce::Graphics& g)
     // Logo
     auto header = getLocalBounds().reduced (14).withTrimmedLeft (library.getRight()).removeFromTop (40);
     header.removeFromLeft (14);
-    g.setColour (accent);
-    g.fillRoundedRectangle ((float) header.getX(), (float) header.getY() + 8.0f, 24.0f, 24.0f, 6.0f);
-    g.setColour (bgBottom);
-    g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
-    g.drawText ("K", header.getX(), header.getY() + 8, 24, 24, juce::Justification::centred);
+    {
+        // Fadenkreuz-Logo
+        const auto lc = juce::Point<float> ((float) header.getX() + 12.0f, (float) header.getY() + 20.0f);
+        g.setColour (accent);
+        g.drawEllipse (juce::Rectangle<float> (22.0f, 22.0f).withCentre (lc), 2.2f);
+        g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (lc));
+        for (auto d : { juce::Point<float> (0, -1), juce::Point<float> (0, 1), juce::Point<float> (-1, 0), juce::Point<float> (1, 0) })
+            g.drawLine (lc.x + d.x * 7.0f, lc.y + d.y * 7.0f, lc.x + d.x * 14.0f, lc.y + d.y * 14.0f, 2.2f);
+    }
     g.setColour (text);
     g.setFont (juce::FontOptions (19.0f, juce::Font::bold));
-    g.drawText ("KICK SAMPLER", header.getX() + 34, header.getY() + 4, 200, 22, juce::Justification::centredLeft);
+    g.drawText ("ONE SHOOTER", header.getX() + 34, header.getY() + 4, 200, 22, juce::Justification::centredLeft);
     g.setColour (textDim);
     g.setFont (juce::FontOptions (11.0f));
     g.drawText ("by Dani Koenig", header.getX() + 34, header.getY() + 24, 200, 14, juce::Justification::centredLeft);
@@ -400,7 +461,7 @@ void KickSamplerEditor::paint (juce::Graphics& g)
     }
 
     // Sample-Name- und Tempo-Pill
-    for (auto pill : { sampleName.getBounds().expanded (8, 0).toFloat(), tempoBounds.toFloat() })
+    for (auto pill : { namePill.toFloat(), tempoBounds.toFloat() })
     {
         g.setColour (inset);
         g.fillRoundedRectangle (pill, 6.0f);
@@ -437,9 +498,16 @@ void KickSamplerEditor::resized()
     header.removeFromLeft (240);
     loadButton.setBounds (header.removeFromRight (130).reduced (0, 4));
     header.removeFromRight (12);
-    tempoBounds = header.removeFromRight (200).reduced (0, 4);
+    tempoBounds = header.removeFromRight (190).reduced (0, 4);
     header.removeFromRight (12);
-    sampleName.setBounds (header.reduced (8, 4));
+    nextButton.setBounds (header.removeFromRight (30).reduced (0, 4));
+    header.removeFromRight (4);
+    prevButton.setBounds (header.removeFromRight (30).reduced (0, 4));
+    header.removeFromRight (8);
+    namePill = header.reduced (0, 4);
+    auto np = namePill.reduced (12, 0);
+    sampleFolder.setBounds (np.removeFromRight (np.getWidth() / 2));
+    sampleName.setBounds (np);
 
     r.removeFromTop (12);
 
@@ -465,6 +533,7 @@ void KickSamplerEditor::resized()
         mPitch.bounds  = rowA.removeFromLeft (unit * 2); rowA.removeFromLeft (gap);
         mAmp.bounds    = rowA;
         layoutKnobs (inner (mSample.bounds), { &kStart, &kLength, &kTranspose });
+        chromaticButton.setBounds (mSample.bounds.getRight() - 122, mSample.bounds.getY() + 8, 110, 24);
         layoutKnobs (inner (mPitch.bounds),  { &kPitchAmt, &kPitchDecay });
         layoutKnobs (inner (mAmp.bounds),    { &kAttack, &kHold, &kDecay, &kRelease });
     }
@@ -524,7 +593,7 @@ void KickSamplerEditor::filesDropped (const juce::StringArray& files, int, int)
 
 void KickSamplerEditor::openFileChooser()
 {
-    chooser = std::make_unique<juce::FileChooser> ("Kick-Sample laden", juce::File(),
+    chooser = std::make_unique<juce::FileChooser> ("Load sample", juce::File(),
                                                    "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg;*.m4a;*.caf");
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                           [this] (const juce::FileChooser& fc)
@@ -574,32 +643,32 @@ void KickSamplerEditor::updateTimelineIfNeeded (bool force)
 void KickSamplerEditor::updateInfo()
 {
     const auto peaks = processor.getPeaks();
-    sampleName.setText (peaks.isEmpty() ? juce::String ("Kein Sample geladen") : peaks.name, juce::dontSendNotification);
+    sampleName.setText (peaks.isEmpty() ? juce::String ("No sample loaded") : peaks.name, juce::dontSendNotification);
+    {
+        auto folder = library.folderOfLoaded();
+        if (folder.isEmpty() && ! peaks.isEmpty())
+            folder = processor.getLoadedFile().getParentDirectory().getFileName();
+        sampleFolder.setText (folder.replace ("/", " / "), juce::dontSendNotification);
+    }
 
     const double bpm = processor.getHostBpm();
     const int num = processor.getTimeSigNumerator();
     const int den = processor.getTimeSigDenominator();
     const juce::String tempo = processor.hasHostTempo()
         ? juce::String (bpm, 2) + " BPM   " + juce::String (num) + "/" + juce::String (den)
-        : juce::String ("120 BPM (kein Host)");
+        : juce::String ("120 BPM (no host)");
+
+    if (tempo != tempoText) { tempoText = tempo; repaint (tempoBounds); }
 
     const double sec = timeline.totalSeconds();
     if (sec <= 0.0)
     {
-        lengthCard.set ("--", { "Beats|--", "16tel|--", "Dauer|--", "Notenwert|--" }, tempo);
-        if (tempo != tempoText) { tempoText = tempo; repaint (tempoBounds); }
+        lengthCard.clear();
         return;
     }
 
     const double quarters = sec * bpm / 60.0;
     const double barQuarters = num * 4.0 / den;
-    const double bars = quarters / barQuarters;
-
-    lengthCard.set (juce::String (bars, 3) + (std::abs (bars - 1.0) < 0.0005 ? " Takt" : " Takte"),
-                    { "Beats|" + juce::String (quarters, 2),
-                      "16tel|" + juce::String (quarters * 4.0, 1),
-                      "Dauer|" + juce::String (juce::roundToInt (sec * 1000.0)) + " ms",
-                      "Notenwert|ca. " + nearestNoteValue (quarters, barQuarters) },
-                    tempo);
-    if (tempo != tempoText) { tempoText = tempo; repaint (tempoBounds); }
+    lengthCard.set (quarters * 4.0, quarters, sec * 1000.0, NoteValues::nearest (quarters, barQuarters),
+                    juce::jmax (1, (int) std::round (num * 16.0 / den)));
 }

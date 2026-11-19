@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(KickSampler VERSION 1.1.0)
+project(OneShooter VERSION 1.2.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,13 +18,13 @@ else()
     FetchContent_MakeAvailable(JUCE)
 endif()
 
-juce_add_plugin(KickSampler
+juce_add_plugin(OneShooter
     COMPANY_NAME "Dani Koenig"
-    BUNDLE_ID "ch.danikoenig.kicksampler"
+    BUNDLE_ID "ch.danikoenig.oneshooter"
     PLUGIN_MANUFACTURER_CODE Dkng
     PLUGIN_CODE Kck1
     FORMATS VST3 Standalone
-    PRODUCT_NAME "Kick Sampler"
+    PRODUCT_NAME "One Shooter"
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
@@ -33,20 +33,20 @@ juce_add_plugin(KickSampler
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Drum Sampler)
 
-target_sources(KickSampler PRIVATE
+target_sources(OneShooter PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/WaveformView.cpp
     Source/SampleLibrary.cpp
     Source/LibraryPanel.cpp)
 
-target_compile_definitions(KickSampler PUBLIC
+target_compile_definitions(OneShooter PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_DISPLAY_SPLASH_SCREEN=0)
 
-target_link_libraries(KickSampler
+target_link_libraries(OneShooter
     PRIVATE
         juce::juce_audio_utils
         juce::juce_audio_formats
@@ -59,7 +59,7 @@ target_link_libraries(KickSampler
 
 if(KICK_TEST_SRC)
     add_executable(KickTest ${KICK_TEST_SRC})
-    target_link_libraries(KickTest PRIVATE KickSampler)
-    target_include_directories(KickTest PRIVATE $<TARGET_PROPERTY:KickSampler,INCLUDE_DIRECTORIES>)
-    target_compile_definitions(KickTest PRIVATE $<TARGET_PROPERTY:KickSampler,COMPILE_DEFINITIONS>)
+    target_link_libraries(KickTest PRIVATE OneShooter)
+    target_include_directories(KickTest PRIVATE $<TARGET_PROPERTY:OneShooter,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(KickTest PRIVATE $<TARGET_PROPERTY:OneShooter,COMPILE_DEFINITIONS>)
 endif()

@@ -33,6 +33,8 @@ namespace ParamIDs
     // Output
     inline constexpr const char* velocity   = "velocity";
     inline constexpr const char* gain       = "gain";
+    // Chromatisch spielen (Root C3 = MIDI 60)
+    inline constexpr const char* chromatic  = "chromatic";
 }
 
 // Release-Wert ab dem der Release aus ist (One-Shot)
@@ -126,6 +128,7 @@ private:
     {
         bool   active = false;
         int    note = -1;
+        float  noteOffset = 0.0f;   // Halbtoene relativ zu C3 (Chromatic-Modus)
         // Sample-Teil
         bool   sampleActive = false;
         double position = 0.0, endPosition = 0.0, baseIncrement = 1.0;
@@ -183,9 +186,9 @@ private:
     std::atomic<int>    loadedNumSamples { 0 };
     std::atomic<double> loadedSampleRate { 44100.0 };
 
-    std::atomic<float>* p[17] {};
+    std::atomic<float>* p[18] {};
     enum P { pStart, pLength, pTranspose, pPitchAmt, pPitchDecay, pAttack, pHold, pDecay, pRelease,
-             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain };
+             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain, pChromatic };
     float param (P i) const { return p[i]->load(); }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KickSamplerProcessor)

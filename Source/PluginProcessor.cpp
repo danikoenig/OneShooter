@@ -8,6 +8,7 @@ namespace
     constexpr float chokeFadeMs  = 4.0f;
     constexpr float envFloor     = 0.001f;   // -60 dB
     constexpr float subAttackMs  = 1.0f;
+    constexpr int   rootNote     = 60;      // C3: spielt das Sample in Originalhoehe
 
     inline float hermite (float xm1, float x0, float x1, float x2, float t)
     {
@@ -53,8 +54,8 @@ KickSamplerProcessor::KickSamplerProcessor()
                           ParamIDs::pitchDecay, ParamIDs::attack, ParamIDs::hold, ParamIDs::decay,
                           ParamIDs::release, ParamIDs::subVol, ParamIDs::subTune, ParamIDs::subDecay,
                           ParamIDs::clipOn, ParamIDs::clipHard, ParamIDs::clipDrive, ParamIDs::velocity,
-                          ParamIDs::gain };
-    for (int i = 0; i < 17; ++i)
+                          ParamIDs::gain, ParamIDs::chromatic };
+    for (int i = 0; i < 18; ++i)
     {
         p[i] = apvts.getRawParameterValue (ids[i]);
         jassert (p[i] != nullptr);
@@ -103,6 +104,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout KickSamplerProcessor::create
     addFloat (ParamIDs::clipDrive,  "Clip Drive",  { 0.0f, 24.0f, 0.1f }, 0.0f,
               [] (float v, int) { return "+" + String (v, 1) + " dB"; });
 
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::chromatic, 1 }, "Chromatic", false));
     addFloat (ParamIDs::velocity,   "Velocity",    { 0.0f, 1.0f }, 0.5f, pct);
     addFloat (ParamIDs::gain,       "Gain",        { -36.0f, 12.0f, 0.1f }, 0.0f, db);
 
@@ -298,6 +300,7 @@ void KickSamplerProcessor::startVoice (int note, int midiVelocity, const SampleD
     v.note = note;
     v.age = ++voiceCounter;
     v.velocityGain = (1.0f - sens) + sens * vel * vel;
+    v.noteOffset = (param (pChromatic) > 0.5f && note >= 0) ? (float) (note - rootNote) : 0.0f;
 
     if (s != nullptr)
     {
@@ -396,7 +399,7 @@ void KickSamplerProcessor::renderVoices (juce::AudioBuffer<float>& out, int star
                 auto at = [&] (int ch, int k) { return s->buffer.getSample (ch, juce::jlimit (0, n - 1, k)); };
 
                 const double remaining = v.endPosition - v.position;
-                const double inc = v.baseIncrement * std::exp2 ((transpose + pitchAmt * pe) / 12.0f);
+                const double inc = v.baseIncrement * std::exp2 ((transpose + v.noteOffset + pitchAmt * pe) / 12.0f);
                 const float  endGain = (float) juce::jlimit (0.0, 1.0, (remaining / inc) / endFade);
 
                 const float amp = v.envLevel * endGain * common;
@@ -421,7 +424,7 @@ void KickSamplerProcessor::renderVoices (juce::AudioBuffer<float>& out, int star
                 l += sub;
                 r += sub;
 
-                v.subPhase += subFreq * std::exp2 (pitchAmt * pe / 12.0f) / sr;
+                v.subPhase += subFreq * std::exp2 ((v.noteOffset + pitchAmt * pe) / 12.0f) / sr;
                 if (v.subPhase >= 1.0) v.subPhase -= 1.0;
                 v.subLevel *= subCoeff;
                 if (v.subLevel <= envFloor)

@@ -8,7 +8,7 @@ namespace
     const char* audioWildcard = "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg;*.m4a;*.caf";
 }
 
-SampleLibrary::SampleLibrary() : juce::Thread ("Kick Sampler Library Scan")
+SampleLibrary::SampleLibrary() : juce::Thread ("One Shooter Library Scan")
 {
     formatManager.registerBasicFormats();
     load();
@@ -19,20 +19,26 @@ SampleLibrary::~SampleLibrary()
     stopThread (4000);
 }
 
-juce::File SampleLibrary::indexFile()
+static juce::File appDataDir (const char* name)
 {
    #if JUCE_MAC
-    auto dir = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-                   .getChildFile ("Application Support").getChildFile ("Kick Sampler");
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+               .getChildFile ("Application Support").getChildFile (name);
    #else
-    auto dir = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Kick Sampler");
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile (name);
    #endif
-    return dir.getChildFile ("library.json");
+}
+
+juce::File SampleLibrary::indexFile()
+{
+    return appDataDir ("One Shooter").getChildFile ("library.json");
 }
 
 void SampleLibrary::load()
 {
     auto f = indexFile();
+    if (! f.existsAsFile())
+        f = appDataDir ("Kick Sampler").getChildFile ("library.json");   // Index aus v1.1 uebernehmen
     if (! f.existsAsFile())
         return;
 

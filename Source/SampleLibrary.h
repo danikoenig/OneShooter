@@ -5,7 +5,7 @@
 #include <vector>
 
 // Gemeinsamer One-Shot-Index fuer alle Plugin-Instanzen.
-// Wird unter ~/Library/Application Support/Kick Sampler/library.json gespeichert.
+// Wird unter ~/Library/Application Support/One Shooter/library.json gespeichert.
 class SampleLibrary : public juce::ChangeBroadcaster,
                       private juce::Thread
 {

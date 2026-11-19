@@ -1,0 +1,16 @@
+Done!
+
+Restart your DAW and rescan plugins. Then search for "One Shooter"
+in your instrument list.
+
+If you installed One Shooter earlier with the Terminal commands, delete the
+old copy in your user folder so it doesn't show up twice:
+~/Library/Audio/Plug-Ins/VST3/One Shooter.vst3
+
+---
+
+Fertig! Starte deine DAW neu und lass die Plugins neu scannen.
+Falls du One Shooter früher per Terminal installiert hast, lösche die alte
+Kopie in deinem Benutzerordner (siehe oben), damit es nicht doppelt erscheint.
+
+https://github.com/danikoenig/OneShooter

@@ -43,14 +43,35 @@ jobs:
           ditto -c -k --keepParent "pkg/One Shooter" "dist/OneShooter-VST3-macOS-arm64.zip"
           ditto -c -k --keepParent "$ART/Standalone/One Shooter.app" "dist/OneShooter-Standalone-macOS-arm64.zip"
 
+      - name: Build installer (.pkg)
+        run: |
+          ART=build/OneShooter_artefacts/Release
+          VERSION=$(grep -m1 -oE 'project\(OneShooter VERSION [0-9.]+' CMakeLists.txt | grep -oE '[0-9.]+$')
+          mkdir -p pkgroot build/pkg
+          cp -R "$ART/VST3/One Shooter.vst3" pkgroot/
+          # Bundle nicht umleiten (sonst installiert macOS ggf. an einen alten Ort)
+          pkgbuild --analyze --root pkgroot build/pkg/component.plist
+          plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component.plist
+          pkgbuild --root pkgroot --component-plist build/pkg/component.plist \
+            --identifier ch.danikoenig.oneshooter.vst3 --version "$VERSION" \
+            --install-location "/Library/Audio/Plug-Ins/VST3" build/pkg/OneShooterVST3.pkg
+          sed "s/@VERSION@/$VERSION/" installer/distribution.xml > build/pkg/distribution.xml
+          productbuild --distribution build/pkg/distribution.xml --resources installer/resources \
+            --package-path build/pkg "dist/One Shooter Installer.pkg"
+          pkgutil --payload-files "dist/One Shooter Installer.pkg" | head -5
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: OneShooter-macOS-arm64
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*.pkg
 
       - name: Release (nur bei Tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            dist/*.pkg

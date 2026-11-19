@@ -27,15 +27,18 @@ by Dani Koenig
 
 ## Download
 
-1. Open the [Actions tab](https://github.com/danikoenig/OneShooter/actions) and click the latest successful run (green check mark).
-2. At the bottom of the page, under **Artifacts**, download `OneShooter-macOS-arm64` (you need to be signed in to GitHub).
-3. Unzip it. Inside you'll find `OneShooter-VST3-macOS-arm64.zip`, which contains the plugin and the install guide.
+Get the latest version from the [Releases page](https://github.com/danikoenig/OneShooter/releases):
+
+- **One Shooter Installer.pkg** – easiest, no Terminal needed
+- **OneShooter-VST3-macOS-arm64.zip** – the plugin plus the install guide, for manual installation
 
 ## Installation
 
-Step-by-step guide for people new to Terminal (English and German): [INSTALL.txt](INSTALL.txt)
+Step-by-step guide (English and German): [INSTALL.txt](INSTALL.txt)
 
-Short version:
+**Installer:** double-click `One Shooter Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs to `/Library/Audio/Plug-Ins/VST3`.
+
+**Manual (Terminal):** unzip in your Downloads folder, then:
 
 ```
 mkdir -p ~/Library/Audio/Plug-Ins/VST3
@@ -43,7 +46,7 @@ cp -R "$(find ~/Downloads -maxdepth 3 -name "One Shooter.vst3" -print -quit)" ~/
 xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"One Shooter.vst3"
 ```
 
-Then restart your DAW and rescan plugins. The `xattr` line is needed because the plugin is not notarized by Apple.
+Then restart your DAW and rescan plugins.
 
 **Requirements:** Apple Silicon Mac (M1 or newer), macOS 11 or newer, a DAW with VST3 support (Bitwig, Ableton Live, Cubase, Studio One, Reaper ...). Logic Pro and GarageBand don't support VST3.
 

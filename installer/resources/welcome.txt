@@ -1,0 +1,13 @@
+One Shooter - free one-shot sample player
+by Dani Koenig
+
+This installs the One Shooter VST3 plugin to:
+/Library/Audio/Plug-Ins/VST3
+
+Requirements: Apple Silicon Mac (M1 or newer), macOS 11 or newer,
+a DAW with VST3 support (Bitwig, Ableton Live, Cubase, Studio One, Reaper ...).
+
+---
+
+Installiert das One Shooter VST3-Plugin nach:
+/Library/Audio/Plug-Ins/VST3

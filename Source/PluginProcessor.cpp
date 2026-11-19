@@ -199,20 +199,19 @@ bool OneShooterProcessor::loadSample (const juce::File& file)
     }
 
     // Grundton erkennen (fuer Chromatic), bevor das Sample live geht (nicht unter dem Audio-Lock)
-    PitchResult det = PitchDetector::detect (data->buffer, data->sampleRate);
+    // Tonart im Dateinamen hat Vorrang (Packs beschriften sie bewusst; bei Kicks mit Pitch-Abfall
+    // und bei Akkorden ist die Erkennung unsicher). Sonst entscheidet die Tonerkennung.
+    PitchResult det;
     bool fromName = false;
-    if (! det.tonal)
+    if (const int nameRoot = rootFromFileName (data->name); nameRoot >= 0)
     {
-        // Akkorde und Noise erkennt der Detektor nicht: Tonart aus dem Dateinamen nehmen
-        const int nameRoot = rootFromFileName (data->name);
-        if (nameRoot >= 0)
-        {
-            det.tonal = true;
-            det.midi = (float) nameRoot;
-            det.confidence = 0.5f;
-            fromName = true;
-        }
+        det.tonal = true;
+        det.midi = (float) nameRoot;
+        det.confidence = 1.0f;
+        fromName = true;
     }
+    else
+        det = PitchDetector::detect (data->buffer, data->sampleRate);
 
     std::unique_ptr<SampleData> old;
     {

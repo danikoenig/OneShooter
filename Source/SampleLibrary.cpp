@@ -267,8 +267,8 @@ bool SampleLibrary::isOneShot (juce::AudioFormatReader& reader, const juce::Stri
     if (onset * 0.005 > 0.06)
         return false;
 
-    // Peak kurz nach dem Onset (max. 150 ms)
-    if ((peakIdx - onset) * 0.005 > 0.15)
+    // Peak kurz nach dem Onset (max. 250 ms, Stabs duerfen etwas anschwellen)
+    if ((peakIdx - onset) * 0.005 > 0.25)
         return false;
 
     // Ende deutlich leiser als der Peak
@@ -278,5 +278,5 @@ bool SampleLibrary::isOneShot (juce::AudioFormatReader& reader, const juce::Stri
         tail += rms[(size_t) w];
     tail /= (float) (numWin - tailStart);
 
-    return tail < peak * 0.3f;
+    return tail < peak * 0.45f;
 }

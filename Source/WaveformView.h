@@ -3,16 +3,19 @@
 #include "PluginProcessor.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
-// Waveform mit Start/End-Markern, Beat-Raster und Playhead
+// Waveform mit Start/End-Markern, Beat-Raster, Envelope-Overlay und Playhead
 class WaveformView : public juce::Component
 {
 public:
     explicit WaveformView (KickSamplerProcessor& p);
 
     void setPeaks (WaveformPeaks newPeaks);
-    void refresh();   // vom Editor-Timer aufgerufen
+    void setTimeline (KickTimeline t);
+    void refresh();
+    void setDragHover (bool b) { dragHover = b; repaint(); }
 
     void paint (juce::Graphics&) override;
+    void resized() override { waveCache = {}; }
     void mouseMove (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
@@ -24,17 +27,21 @@ private:
 
     float startFrac() const;
     float endFrac() const;
+    juce::Rectangle<float> waveArea() const;
     float xForFrac (float f) const;
     float fracForX (float x) const;
     Drag hitTestMarker (float x) const;
     void setParam (const char* id, float value);
+    void beginGesture();
+    void endGesture();
 
     KickSamplerProcessor& processor;
     WaveformPeaks peaks;
+    KickTimeline timeline;
+    juce::Path waveCache;
     Drag dragging = Drag::none;
-    float lastPlayPos = -1.0f;
-    float lastStart = -1.0f, lastEnd = -1.0f, lastTranspose = 0.0f;
-    double lastBpm = 0.0;
+    bool dragHover = false;
+    float lastPlayPos = -1.0f, lastStart = -1.0f, lastEnd = -1.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveformView)
 };

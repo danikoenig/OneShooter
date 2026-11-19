@@ -5,63 +5,246 @@
 using namespace KickColours;
 
 //==============================================================================
+// LookAndFeel
 KickLookAndFeel::KickLookAndFeel()
 {
     setColour (juce::Slider::textBoxTextColourId, text);
     setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    setColour (juce::Slider::textBoxHighlightColourId, accent.withAlpha (0.4f));
     setColour (juce::Label::textColourId, text);
     setColour (juce::TextButton::textColourOffId, text);
-    setColour (juce::TextButton::textColourOnId, background);
+    setColour (juce::TextButton::textColourOnId, text);
+    setColour (juce::TextEditor::highlightColourId, accent.withAlpha (0.35f));
+    setColour (juce::CaretComponent::caretColourId, accent);
+    setColour (juce::PopupMenu::backgroundColourId, card);
 }
 
 void KickLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h, float pos,
                                         float startAngle, float endAngle, juce::Slider& s)
 {
-    auto bounds = juce::Rectangle<int> (x, y, w, h).toFloat().reduced (4.0f);
-    const float radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
-    const auto centre = bounds.getCentre();
-    const float lineW = 3.5f;
-    const float arcR = radius - lineW;
+    const auto col = juce::Colour::fromString (s.getProperties().getWithDefault ("accent", accent.toString()).toString());
+    auto bounds = juce::Rectangle<int> (x, y, w, h).toFloat();
+    const float size = juce::jmin (bounds.getWidth(), bounds.getHeight()) - 6.0f;
+    auto r = juce::Rectangle<float> (size, size).withCentre (bounds.getCentre());
+    const auto c = r.getCentre();
+    const float radius = size * 0.5f;
+    const float lineW = juce::jmax (3.0f, size * 0.075f);
+    const float arcR = radius - lineW * 0.5f;
     const float angle = startAngle + pos * (endAngle - startAngle);
+    const bool hover = s.isMouseOverOrDragging();
 
+    // Track
     juce::Path track;
-    track.addCentredArc (centre.x, centre.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
+    track.addCentredArc (c.x, c.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
     g.setColour (knobTrack);
     g.strokePath (track, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-    // Bipolare Parameter (Transpose) von der Mitte aus zeichnen
-    const bool bipolar = s.getMinimum() < 0.0 && s.getMaximum() > 0.0 && s.getName() == "Transpose";
+    // Wert (bipolar von der Mitte)
+    const bool bipolar = (bool) s.getProperties().getWithDefault ("bipolar", false);
     const float from = bipolar ? (startAngle + endAngle) * 0.5f : startAngle;
+    if (std::abs (angle - from) > 0.001f)
+    {
+        juce::Path val;
+        val.addCentredArc (c.x, c.y, arcR, arcR, 0.0f, juce::jmin (from, angle), juce::jmax (from, angle), true);
+        g.setColour (col.withAlpha (0.25f));
+        g.strokePath (val, juce::PathStrokeType (lineW * 2.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour (col);
+        g.strokePath (val, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
 
-    juce::Path value;
-    value.addCentredArc (centre.x, centre.y, arcR, arcR, 0.0f, juce::jmin (from, angle), juce::jmax (from, angle), true);
-    g.setColour (accent);
-    g.strokePath (value, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    // Body
+    const float bodyR = arcR - lineW * 1.6f;
+    auto body = juce::Rectangle<float> (bodyR * 2.0f, bodyR * 2.0f).withCentre (c);
+    g.setGradientFill (juce::ColourGradient (knobBody.brighter (hover ? 0.25f : 0.15f), body.getX(), body.getY(),
+                                             knobBody.darker (0.3f), body.getRight(), body.getBottom(), false));
+    g.fillEllipse (body);
+    g.setColour (juce::Colours::white.withAlpha (0.06f));
+    g.drawEllipse (body.reduced (0.5f), 1.0f);
 
-    g.setColour (panel.brighter (0.15f));
-    g.fillEllipse (juce::Rectangle<float> (arcR * 1.4f, arcR * 1.4f).withCentre (centre));
-
-    juce::Path pointer;
-    pointer.addRoundedRectangle (-1.5f, -arcR * 0.7f, 3.0f, arcR * 0.4f, 1.5f);
+    // Zeiger
+    const float px = c.x + std::sin (angle) * bodyR * 0.72f;
+    const float py = c.y - std::cos (angle) * bodyR * 0.72f;
+    const float qx = c.x + std::sin (angle) * bodyR * 0.25f;
+    const float qy = c.y - std::cos (angle) * bodyR * 0.25f;
     g.setColour (text);
-    g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (centre));
+    g.drawLine (qx, qy, px, py, 2.2f);
+}
+
+juce::Label* KickLookAndFeel::createSliderTextBox (juce::Slider& s)
+{
+    auto* l = LookAndFeel_V4::createSliderTextBox (s);
+    l->setFont (juce::FontOptions (11.5f));
+    l->setColour (juce::Label::textColourId, text.withAlpha (0.9f));
+    l->setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    l->setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
+    l->setColour (juce::TextEditor::backgroundColourId, inset);
+    l->setColour (juce::TextEditor::textColourId, text);
+    l->setColour (juce::TextEditor::outlineColourId, accent);
+    return l;
 }
 
 void KickLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&,
                                             bool highlighted, bool down)
 {
     auto r = b.getLocalBounds().toFloat().reduced (0.5f);
-    g.setColour (down ? accent.darker (0.2f) : highlighted ? panel.brighter (0.25f) : panel.brighter (0.1f));
-    g.fillRoundedRectangle (r, 4.0f);
-    g.setColour (accent.withAlpha (0.7f));
-    g.drawRoundedRectangle (r, 4.0f, 1.0f);
+    const bool primary = (bool) b.getProperties().getWithDefault ("primary", false);
+    if (primary)
+    {
+        g.setGradientFill (juce::ColourGradient (accent2, r.getX(), r.getY(), accent, r.getRight(), r.getBottom(), false));
+        g.fillRoundedRectangle (r, 6.0f);
+        if (highlighted || down)
+        {
+            g.setColour (juce::Colours::white.withAlpha (down ? 0.2f : 0.1f));
+            g.fillRoundedRectangle (r, 6.0f);
+        }
+        b.setColour (juce::TextButton::textColourOffId, bgBottom);
+        return;
+    }
+    g.setColour (down ? cardBorder.brighter (0.2f) : highlighted ? cardBorder : inset);
+    g.fillRoundedRectangle (r, 6.0f);
+    g.setColour (cardBorder.brighter (0.15f));
+    g.drawRoundedRectangle (r, 6.0f, 1.0f);
+}
+
+void KickLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool)
+{
+    auto r = b.getLocalBounds().toFloat().reduced (1.0f);
+    const auto col = juce::Colour::fromString (b.getProperties().getWithDefault ("accent", accent.toString()).toString());
+    const auto style = b.getProperties().getWithDefault ("style", "power").toString();
+    const bool on = b.getToggleState();
+
+    if (style == "segment")
+    {
+        // SOFT | HARD
+        g.setColour (inset);
+        g.fillRoundedRectangle (r, 6.0f);
+        g.setColour (cardBorder);
+        g.drawRoundedRectangle (r, 6.0f, 1.0f);
+        auto left = r.withWidth (r.getWidth() * 0.5f).reduced (2.0f);
+        auto right = left.withX (r.getCentreX() + 2.0f);
+        g.setColour (col.withAlpha (0.9f));
+        g.fillRoundedRectangle (on ? right : left, 4.0f);
+        g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+        g.setColour (on ? textDim : bgBottom);
+        g.drawText ("SOFT", left, juce::Justification::centred);
+        g.setColour (on ? bgBottom : textDim);
+        g.drawText ("HARD", right, juce::Justification::centred);
+        return;
+    }
+
+    // Power-Pill
+    g.setColour (on ? col.withAlpha (0.18f) : inset);
+    g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
+    g.setColour (on ? col : (highlighted ? textDim : cardBorder.brighter (0.2f)));
+    g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.2f);
+    auto dot = juce::Rectangle<float> (8.0f, 8.0f).withCentre ({ r.getX() + 14.0f, r.getCentreY() });
+    g.setColour (on ? col : textDim.withAlpha (0.5f));
+    g.fillEllipse (dot);
+    g.setColour (on ? text : textDim);
+    g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+    g.drawText (on ? "ON" : "OFF", r.withTrimmedLeft (22.0f), juce::Justification::centred);
+}
+
+void KickLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, int x, int y, int w, int h, bool vertical,
+                                     int thumbStart, int thumbSize, bool over, bool down)
+{
+    auto thumb = vertical ? juce::Rectangle<int> (x, thumbStart, w, thumbSize)
+                          : juce::Rectangle<int> (thumbStart, y, thumbSize, h);
+    g.setColour (textDim.withAlpha (over || down ? 0.6f : 0.3f));
+    g.fillRoundedRectangle (thumb.reduced (1).toFloat(), 3.0f);
+}
+
+//==============================================================================
+void Meter::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
+    g.drawText (isReduction ? "GR" : "OUT", r.withHeight (12.0f).expanded (10.0f, 0.0f), juce::Justification::centred);
+    auto bar = r.withTrimmedTop (16.0f).withTrimmedBottom (16.0f);
+    g.setColour (inset);
+    g.fillRoundedRectangle (bar, 3.0f);
+
+    float frac;
+    juce::String label;
+    if (isReduction)
+    {
+        frac = juce::jlimit (0.0f, 1.0f, value / 12.0f);
+        label = value > 0.05f ? "-" + juce::String (value, 1) : "0.0";
+        // von oben nach unten
+        auto fill = bar.withHeight (bar.getHeight() * frac);
+        g.setColour (colour);
+        g.fillRoundedRectangle (fill, 3.0f);
+    }
+    else
+    {
+        const float db = juce::Decibels::gainToDecibels (value, -60.0f);
+        frac = juce::jlimit (0.0f, 1.0f, (db + 60.0f) / 66.0f);
+        label = value > 0.0001f ? juce::String (db, 1) : "-inf";
+        auto fill = bar.withTrimmedTop (bar.getHeight() * (1.0f - frac));
+        g.setGradientFill (juce::ColourGradient (value > 1.0f ? clip : colour, 0.0f, bar.getY(),
+                                                 colour.darker (0.4f), 0.0f, bar.getBottom(), false));
+        g.fillRoundedRectangle (fill, 3.0f);
+        // 0-dB-Linie
+        const float y0 = bar.getBottom() - bar.getHeight() * (60.0f / 66.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.3f));
+        g.drawHorizontalLine ((int) y0, bar.getX(), bar.getRight());
+    }
+
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (10.0f));
+    g.drawText (label, r.withTop (r.getBottom() - 14.0f).expanded (12.0f, 0.0f), juce::Justification::centred);
+}
+
+//==============================================================================
+void LengthCard::set (const juce::String& big, const juce::StringArray& lines, const juce::String& tempo)
+{
+    if (big != bigText || lines != detail || tempo != tempoText)
+    {
+        bigText = big; detail = lines; tempoText = tempo;
+        repaint();
+    }
+}
+
+void LengthCard::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    g.setColour (card);
+    g.fillRoundedRectangle (r, 10.0f);
+    g.setColour (cardBorder);
+    g.drawRoundedRectangle (r.reduced (0.5f), 10.0f, 1.0f);
+
+    auto inner = getLocalBounds().reduced (16, 14);
+    g.setColour (env);
+    g.fillEllipse ((float) inner.getX(), (float) inner.getY() + 5.0f, 7.0f, 7.0f);
+    g.setColour (text);
+    g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    g.drawText (juce::String::fromUTF8 ("KICK-LÄNGE"), inner.removeFromTop (18).withTrimmedLeft (14), juce::Justification::centredLeft);
+
+    inner.removeFromTop (10);
+    g.setColour (accent2);
+    g.setFont (juce::FontOptions (34.0f, juce::Font::bold));
+    g.drawText (bigText, inner.removeFromTop (42), juce::Justification::centredLeft);
+
+    inner.removeFromTop (8);
+    g.setFont (juce::FontOptions (13.0f));
+    for (auto& l : detail)
+    {
+        auto row = inner.removeFromTop (22);
+        const auto key = l.upToFirstOccurrenceOf ("|", false, false);
+        const auto val = l.fromFirstOccurrenceOf ("|", false, false);
+        g.setColour (textDim);
+        g.drawText (key, row, juce::Justification::centredLeft);
+        g.setColour (text);
+        g.drawText (val, row, juce::Justification::centredRight);
+    }
+
 }
 
 //==============================================================================
 namespace
 {
-    // Naechster Notenwert zu einer Laenge in Viertelnoten
     juce::String nearestNoteValue (double quarters, double barQuarters)
     {
         struct NV { double q; const char* name; };
@@ -69,7 +252,6 @@ namespace
             { 0.0625, "1/64" }, { 0.125, "1/32" }, { 0.1875, "1/32." }, { 0.25, "1/16" }, { 0.375, "1/16." },
             { 0.5, "1/8" }, { 0.75, "1/8." }, { 1.0, "1/4" }, { 1.5, "1/4." }, { 2.0, "1/2" }, { 3.0, "1/2." },
         };
-
         double bestDist = 1e9;
         juce::String best;
         for (auto& v : values)
@@ -87,47 +269,68 @@ namespace
 }
 
 KickSamplerEditor::KickSamplerEditor (KickSamplerProcessor& p)
-    : AudioProcessorEditor (&p), processor (p), waveform (p)
+    : AudioProcessorEditor (&p), processor (p), library (p), waveform (p),
+      clipMeter (clip, true), outMeter (accent, false)
 {
     setLookAndFeel (&lnf);
 
+    addAndMakeVisible (library);
     addAndMakeVisible (waveform);
+    addAndMakeVisible (lengthCard);
 
-    addAndMakeVisible (loadButton);
+    loadButton.getProperties().set ("primary", true);
     loadButton.onClick = [this] { openFileChooser(); };
+    addAndMakeVisible (loadButton);
 
-    sampleName.setFont (juce::FontOptions (15.0f, juce::Font::bold));
+    sampleName.setFont (juce::FontOptions (14.0f, juce::Font::bold));
     sampleName.setColour (juce::Label::textColourId, text);
+    sampleName.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (sampleName);
 
-    tempoLabel.setFont (juce::FontOptions (13.0f));
-    tempoLabel.setColour (juce::Label::textColourId, textDim);
-    tempoLabel.setJustificationType (juce::Justification::centredRight);
-    addAndMakeVisible (tempoLabel);
+    mSample = { "SAMPLE",    accent, {} };
+    mPitch  = { "PITCH ENV", pitch,  {} };
+    mAmp    = { "AMP ENV",   env,    {} };
+    mSub    = { "SUB",       sub,    {} };
+    mClip   = { "CLIPPER",   clip,   {} };
+    mOut    = { "OUTPUT",    accent2, {} };
 
-    lengthLabel.setFont (juce::FontOptions (22.0f, juce::Font::bold));
-    lengthLabel.setColour (juce::Label::textColourId, accent);
-    addAndMakeVisible (lengthLabel);
+    setupKnob (kStart,      ParamIDs::start,      "Start",     accent);
+    setupKnob (kLength,     ParamIDs::length,     "Length",    accent);
+    setupKnob (kTranspose,  ParamIDs::transpose,  "Transpose", accent);
+    setupKnob (kPitchAmt,   ParamIDs::pitchAmt,   "Amount",    pitch);
+    setupKnob (kPitchDecay, ParamIDs::pitchDecay, "Decay",     pitch);
+    setupKnob (kAttack,     ParamIDs::attack,     "Attack",    env);
+    setupKnob (kHold,       ParamIDs::hold,       "Hold",      env);
+    setupKnob (kDecay,      ParamIDs::decay,      "Decay",     env);
+    setupKnob (kRelease,    ParamIDs::release,    "Release",   env);
+    setupKnob (kSubVol,     ParamIDs::subVol,     "Volume",    sub);
+    setupKnob (kSubTune,    ParamIDs::subTune,    "Tune",      sub);
+    setupKnob (kSubDecay,   ParamIDs::subDecay,   "Decay",     sub);
+    setupKnob (kClipDrive,  ParamIDs::clipDrive,  "Drive",     clip);
+    setupKnob (kVelocity,   ParamIDs::velocity,   "Velocity",  accent2);
+    setupKnob (kGain,       ParamIDs::gain,       "Gain",      accent2);
 
-    lengthDetail.setFont (juce::FontOptions (13.0f));
-    lengthDetail.setColour (juce::Label::textColourId, textDim);
-    addAndMakeVisible (lengthDetail);
+    kTranspose.slider.getProperties().set ("bipolar", true);
+    kPitchAmt.slider.getProperties().set ("bipolar", true);
 
-    setupKnob (kStart,     ParamIDs::start,     "Start");
-    setupKnob (kLength,    ParamIDs::length,    "Length");
-    setupKnob (kTranspose, ParamIDs::transpose, "Transpose");
-    setupKnob (kAttack,    ParamIDs::attack,    "Attack");
-    setupKnob (kHold,      ParamIDs::hold,      "Hold");
-    setupKnob (kDecay,     ParamIDs::decay,     "Decay");
-    setupKnob (kVelocity,  ParamIDs::velocity,  "Velocity");
-    setupKnob (kGain,      ParamIDs::gain,      "Gain");
+    clipOn.getProperties().set ("accent", clip.toString());
+    clipHard.getProperties().set ("accent", clip.toString());
+    clipHard.getProperties().set ("style", "segment");
+    addAndMakeVisible (clipOn);
+    addAndMakeVisible (clipHard);
+    clipOnAtt   = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::clipOn, clipOn);
+    clipHardAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, ParamIDs::clipHard, clipHard);
+
+    addAndMakeVisible (clipMeter);
+    addAndMakeVisible (outMeter);
 
     processor.addChangeListener (this);
 
     setResizable (true, true);
-    setResizeLimits (640, 380, 1400, 800);
-    setSize (780, 430);
+    setResizeLimits (1100, 660, 1800, 1100);
+    setSize (1240, 720);
 
+    updateTimelineIfNeeded (true);
     updateInfo();
     startTimerHz (30);
 }
@@ -138,90 +341,185 @@ KickSamplerEditor::~KickSamplerEditor()
     setLookAndFeel (nullptr);
 }
 
-void KickSamplerEditor::setupKnob (Knob& k, const char* paramID, const juce::String& name)
+void KickSamplerEditor::setupKnob (Knob& k, const char* paramID, const juce::String& name, juce::Colour c)
 {
     k.slider.setName (name);
     k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 18);
+    k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 90, 18);
+    k.slider.getProperties().set ("accent", c.toString());
+    k.slider.setMouseDragSensitivity (180);
+    k.slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    k.slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     addAndMakeVisible (k.slider);
 
     k.label.setText (name.toUpperCase(), juce::dontSendNotification);
-    k.label.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+    k.label.setFont (juce::FontOptions (10.5f, juce::Font::bold));
     k.label.setColour (juce::Label::textColourId, textDim);
     k.label.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (k.label);
 
     k.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (processor.apvts, paramID, k.slider);
 
-    // Double-Click-Reset auf den Default (in echten Einheiten)
     auto* param = processor.apvts.getParameter (paramID);
     k.slider.setDoubleClickReturnValue (true, param->convertFrom0to1 (param->getDefaultValue()));
 }
 
 void KickSamplerEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (background);
+    g.setGradientFill (juce::ColourGradient (bgTop, 0.0f, 0.0f, bgBottom, 0.0f, (float) getHeight(), false));
+    g.fillAll();
 
+    // Logo
+    auto header = getLocalBounds().reduced (14).withTrimmedLeft (library.getRight()).removeFromTop (40);
+    header.removeFromLeft (14);
+    g.setColour (accent);
+    g.fillRoundedRectangle ((float) header.getX(), (float) header.getY() + 8.0f, 24.0f, 24.0f, 6.0f);
+    g.setColour (bgBottom);
+    g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
+    g.drawText ("K", header.getX(), header.getY() + 8, 24, 24, juce::Justification::centred);
     g.setColour (text);
-    g.setFont (juce::FontOptions (18.0f, juce::Font::bold));
-    g.drawText ("KICK SAMPLER", 16, 10, 200, 26, juce::Justification::centredLeft);
+    g.setFont (juce::FontOptions (19.0f, juce::Font::bold));
+    g.drawText ("KICK SAMPLER", header.getX() + 34, header.getY() + 4, 200, 22, juce::Justification::centredLeft);
+    g.setColour (textDim);
+    g.setFont (juce::FontOptions (11.0f));
+    g.drawText ("by Dani Koenig", header.getX() + 34, header.getY() + 24, 200, 14, juce::Justification::centredLeft);
 
-    if (dragHover)
+    // Modul-Karten
+    for (auto* m : { &mSample, &mPitch, &mAmp, &mSub, &mClip, &mOut })
     {
-        g.setColour (accent);
-        g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (2.0f), 6.0f, 2.0f);
+        auto r = m->bounds.toFloat();
+        g.setColour (card);
+        g.fillRoundedRectangle (r, 10.0f);
+        g.setColour (cardBorder);
+        g.drawRoundedRectangle (r.reduced (0.5f), 10.0f, 1.0f);
+        g.setColour (m->colour);
+        g.fillEllipse (r.getX() + 14.0f, r.getY() + 15.0f, 7.0f, 7.0f);
+        g.setColour (text);
+        g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+        g.drawText (m->title, (int) r.getX() + 28, (int) r.getY() + 10, 160, 18, juce::Justification::centredLeft);
     }
+
+    // Sample-Name- und Tempo-Pill
+    for (auto pill : { sampleName.getBounds().expanded (8, 0).toFloat(), tempoBounds.toFloat() })
+    {
+        g.setColour (inset);
+        g.fillRoundedRectangle (pill, 6.0f);
+        g.setColour (cardBorder);
+        g.drawRoundedRectangle (pill.reduced (0.5f), 6.0f, 1.0f);
+    }
+    g.setColour (env);
+    g.fillEllipse ((float) tempoBounds.getX() + 12.0f, (float) tempoBounds.getCentreY() - 3.5f, 7.0f, 7.0f);
+    g.setColour (text);
+    g.setFont (juce::FontOptions (12.5f, juce::Font::bold));
+    g.drawText (tempoText, tempoBounds.withTrimmedLeft (26), juce::Justification::centredLeft);
 }
 
-void KickSamplerEditor::resized()
+void KickSamplerEditor::layoutKnobs (juce::Rectangle<int> area, std::initializer_list<Knob*> knobs)
 {
-    auto r = getLocalBounds().reduced (16, 10);
-
-    auto header = r.removeFromTop (28);
-    header.removeFromLeft (170);
-    loadButton.setBounds (header.removeFromRight (120).reduced (0, 2));
-    header.removeFromRight (10);
-    tempoLabel.setBounds (header.removeFromRight (170));
-    sampleName.setBounds (header);
-
-    r.removeFromTop (8);
-    auto knobs = r.removeFromBottom (110);
-    r.removeFromBottom (6);
-    auto info = r.removeFromBottom (44);
-    r.removeFromBottom (6);
-    waveform.setBounds (r);
-
-    lengthLabel.setBounds (info.removeFromLeft (260));
-    lengthDetail.setBounds (info);
-
-    Knob* all[] = { &kStart, &kLength, &kTranspose, &kAttack, &kHold, &kDecay, &kVelocity, &kGain };
-    const int kw = knobs.getWidth() / 8;
-    for (auto* k : all)
+    const int w = area.getWidth() / (int) knobs.size();
+    for (auto* k : knobs)
     {
-        auto col = knobs.removeFromLeft (kw);
+        auto col = area.removeFromLeft (w);
         k->label.setBounds (col.removeFromTop (16));
         k->slider.setBounds (col);
     }
 }
 
+void KickSamplerEditor::resized()
+{
+    auto r = getLocalBounds().reduced (14);
+
+    library.setBounds (r.removeFromLeft (290));
+    r.removeFromLeft (14);
+
+    // Header
+    auto header = r.removeFromTop (40);
+    header.removeFromLeft (240);
+    loadButton.setBounds (header.removeFromRight (130).reduced (0, 4));
+    header.removeFromRight (12);
+    tempoBounds = header.removeFromRight (200).reduced (0, 4);
+    header.removeFromRight (12);
+    sampleName.setBounds (header.reduced (8, 4));
+
+    r.removeFromTop (12);
+
+    // Module (zwei Reihen)
+    const int rowH = (r.getHeight() - 12 - 12 - 200) / 2;
+    auto rowB = r.removeFromBottom (juce::jmax (150, rowH));
+    r.removeFromBottom (12);
+    auto rowA = r.removeFromBottom (juce::jmax (150, rowH));
+    r.removeFromBottom (12);
+
+    // Waveform + Laengen-Karte
+    lengthCard.setBounds (r.removeFromRight (250));
+    r.removeFromRight (12);
+    waveform.setBounds (r);
+
+    auto inner = [] (juce::Rectangle<int> b) { return b.reduced (10, 8).withTrimmedTop (26); };
+
+    // Reihe A: Sample 3 | Pitch 2 | Amp 4
+    {
+        const int gap = 12;
+        const int unit = (rowA.getWidth() - 2 * gap) / 9;
+        mSample.bounds = rowA.removeFromLeft (unit * 3); rowA.removeFromLeft (gap);
+        mPitch.bounds  = rowA.removeFromLeft (unit * 2); rowA.removeFromLeft (gap);
+        mAmp.bounds    = rowA;
+        layoutKnobs (inner (mSample.bounds), { &kStart, &kLength, &kTranspose });
+        layoutKnobs (inner (mPitch.bounds),  { &kPitchAmt, &kPitchDecay });
+        layoutKnobs (inner (mAmp.bounds),    { &kAttack, &kHold, &kDecay, &kRelease });
+    }
+
+    // Reihe B: Sub 3 | Clip 3 | Out 3
+    {
+        const int gap = 12;
+        const int unit = (rowB.getWidth() - 2 * gap) / 9;
+        mSub.bounds  = rowB.removeFromLeft (unit * 3); rowB.removeFromLeft (gap);
+        mClip.bounds = rowB.removeFromLeft (unit * 3); rowB.removeFromLeft (gap);
+        mOut.bounds  = rowB;
+        layoutKnobs (inner (mSub.bounds), { &kSubVol, &kSubTune, &kSubDecay });
+
+        auto c = inner (mClip.bounds);
+        clipMeter.setBounds (c.removeFromRight (22).withTrimmedTop (4));
+        c.removeFromRight (12);
+        auto toggles = c.removeFromRight (juce::jmin (120, c.getWidth() / 2));
+        const int ty = toggles.getCentreY();
+        clipOn.setBounds (toggles.getX(), ty - 36, toggles.getWidth(), 28);
+        clipHard.setBounds (toggles.getX(), ty + 6, toggles.getWidth(), 28);
+        c.removeFromRight (8);
+        layoutKnobs (c, { &kClipDrive });
+
+        auto o = inner (mOut.bounds);
+        outMeter.setBounds (o.removeFromRight (22).withTrimmedTop (4));
+        o.removeFromRight (12);
+        layoutKnobs (o, { &kVelocity, &kGain });
+    }
+
+    // Titel in der Clip-Karte zeigt GR an: Meter-Label
+}
+
 bool KickSamplerEditor::isInterestedInFileDrag (const juce::StringArray& files)
 {
     for (auto& f : files)
-        if (KickSamplerProcessor::isSupportedFile (juce::File (f)))
+    {
+        juce::File file (f);
+        if (file.isDirectory() || KickSamplerProcessor::isSupportedFile (file))
             return true;
+    }
     return false;
 }
 
 void KickSamplerEditor::filesDropped (const juce::StringArray& files, int, int)
 {
-    dragHover = false;
+    waveform.setDragHover (false);
+    bool loaded = false;
     for (auto& f : files)
     {
         juce::File file (f);
-        if (KickSamplerProcessor::isSupportedFile (file) && processor.loadSample (file))
-            break;
+        if (file.isDirectory())
+            processor.getLibrary().addFolder (file);   // Ordner -> One-Shot-Index
+        else if (! loaded && KickSamplerProcessor::isSupportedFile (file))
+            loaded = processor.loadSample (file);
     }
-    repaint();
 }
 
 void KickSamplerEditor::openFileChooser()
@@ -240,13 +538,37 @@ void KickSamplerEditor::openFileChooser()
 void KickSamplerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     waveform.setPeaks (processor.getPeaks());
+    updateTimelineIfNeeded (true);
     updateInfo();
+    library.repaint();
 }
 
 void KickSamplerEditor::timerCallback()
 {
     waveform.refresh();
+    updateTimelineIfNeeded (false);
     updateInfo();
+    clipMeter.setValue (processor.getClipReductionDb());
+    outMeter.setValue (processor.getOutputPeak());
+    library.refreshStatus();
+}
+
+void KickSamplerEditor::updateTimelineIfNeeded (bool force)
+{
+    const char* ids[] = { ParamIDs::start, ParamIDs::length, ParamIDs::transpose, ParamIDs::pitchAmt,
+                          ParamIDs::pitchDecay, ParamIDs::attack, ParamIDs::hold, ParamIDs::decay,
+                          ParamIDs::subVol, ParamIDs::subDecay };
+    juce::int64 h = (juce::int64) (processor.getHostBpm() * 1000.0) * 31 + processor.getTimeSigNumerator();
+    for (auto* id : ids)
+        h = h * 1000003 + (juce::int64) (processor.apvts.getRawParameterValue (id)->load() * 100000.0f);
+    h = h * 7 + processor.getPeaks().numSourceSamples;
+
+    if (! force && h == lastTimelineHash)
+        return;
+
+    lastTimelineHash = h;
+    timeline = processor.computeTimeline();
+    waveform.setTimeline (timeline);
 }
 
 void KickSamplerEditor::updateInfo()
@@ -257,28 +579,27 @@ void KickSamplerEditor::updateInfo()
     const double bpm = processor.getHostBpm();
     const int num = processor.getTimeSigNumerator();
     const int den = processor.getTimeSigDenominator();
+    const juce::String tempo = processor.hasHostTempo()
+        ? juce::String (bpm, 2) + " BPM   " + juce::String (num) + "/" + juce::String (den)
+        : juce::String ("120 BPM (kein Host)");
 
-    tempoLabel.setText (processor.hasHostTempo()
-                            ? juce::String (bpm, 2) + " BPM  " + juce::String (num) + "/" + juce::String (den)
-                            : juce::String ("Kein Host-Tempo (120 BPM)"),
-                        juce::dontSendNotification);
-
-    const double sec = processor.getEffectiveLengthSeconds();
+    const double sec = timeline.totalSeconds();
     if (sec <= 0.0)
     {
-        lengthLabel.setText ("-- Takte", juce::dontSendNotification);
-        lengthDetail.setText ("", juce::dontSendNotification);
+        lengthCard.set ("--", { "Beats|--", "16tel|--", "Dauer|--", "Notenwert|--" }, tempo);
+        if (tempo != tempoText) { tempoText = tempo; repaint (tempoBounds); }
         return;
     }
 
     const double quarters = sec * bpm / 60.0;
     const double barQuarters = num * 4.0 / den;
     const double bars = quarters / barQuarters;
-    const double sixteenths = quarters * 4.0;
 
-    lengthLabel.setText (juce::String (bars, 3) + (std::abs (bars - 1.0) < 0.0005 ? " Takt" : " Takte"),
-                         juce::dontSendNotification);
-    lengthDetail.setText (juce::String (quarters, 2) + " Beats  |  " + juce::String (sixteenths, 1) + " x 1/16  |  "
-                              + juce::String (sec * 1000.0, 0) + " ms  |  ca. " + nearestNoteValue (quarters, barQuarters),
-                          juce::dontSendNotification);
+    lengthCard.set (juce::String (bars, 3) + (std::abs (bars - 1.0) < 0.0005 ? " Takt" : " Takte"),
+                    { "Beats|" + juce::String (quarters, 2),
+                      "16tel|" + juce::String (quarters * 4.0, 1),
+                      "Dauer|" + juce::String (juce::roundToInt (sec * 1000.0)) + " ms",
+                      "Notenwert|ca. " + nearestNoteValue (quarters, barQuarters) },
+                    tempo);
+    if (tempo != tempoText) { tempoText = tempo; repaint (tempoBounds); }
 }

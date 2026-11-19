@@ -2,6 +2,7 @@
 
 #include "PluginProcessor.h"
 #include "WaveformView.h"
+#include "LibraryPanel.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 
 class KickLookAndFeel : public juce::LookAndFeel_V4
@@ -10,8 +11,35 @@ public:
     KickLookAndFeel();
     void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h, float pos,
                            float startAngle, float endAngle, juce::Slider&) override;
-    void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&,
-                               bool highlighted, bool down) override;
+    void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&, bool, bool) override;
+    void drawToggleButton (juce::Graphics&, juce::ToggleButton&, bool, bool) override;
+    juce::Label* createSliderTextBox (juce::Slider&) override;
+    void drawScrollbar (juce::Graphics&, juce::ScrollBar&, int x, int y, int w, int h, bool vertical,
+                        int thumbStart, int thumbSize, bool over, bool down) override;
+};
+
+// Vertikales Meter (Pegel oder Gain Reduction)
+class Meter : public juce::Component
+{
+public:
+    Meter (juce::Colour c, bool reduction) : colour (c), isReduction (reduction) {}
+    void setValue (float v) { if (std::abs (v - value) > 0.001f) { value = v; repaint(); } }
+    void paint (juce::Graphics&) override;
+private:
+    juce::Colour colour;
+    bool isReduction;
+    float value = 0.0f;
+};
+
+// Info-Karte mit der Kick-Laenge
+class LengthCard : public juce::Component
+{
+public:
+    void set (const juce::String& big, const juce::StringArray& lines, const juce::String& tempo);
+    void paint (juce::Graphics&) override;
+private:
+    juce::String bigText, tempoText;
+    juce::StringArray detail;
 };
 
 class KickSamplerEditor : public juce::AudioProcessorEditor,
@@ -28,13 +56,14 @@ public:
 
     bool isInterestedInFileDrag (const juce::StringArray& files) override;
     void filesDropped (const juce::StringArray& files, int x, int y) override;
-    void fileDragEnter (const juce::StringArray&, int, int) override { dragHover = true;  repaint(); }
-    void fileDragExit (const juce::StringArray&) override             { dragHover = false; repaint(); }
+    void fileDragEnter (const juce::StringArray&, int, int) override { waveform.setDragHover (true); }
+    void fileDragExit (const juce::StringArray&) override             { waveform.setDragHover (false); }
 
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void timerCallback() override;
     void openFileChooser();
+    void updateTimelineIfNeeded (bool force);
     void updateInfo();
 
     struct Knob
@@ -44,22 +73,43 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
     };
 
-    void setupKnob (Knob& k, const char* paramID, const juce::String& name);
+    struct Module
+    {
+        juce::String title;
+        juce::Colour colour;
+        juce::Rectangle<int> bounds;
+    };
+
+    void setupKnob (Knob& k, const char* paramID, const juce::String& name, juce::Colour c);
+    void layoutKnobs (juce::Rectangle<int> area, std::initializer_list<Knob*> knobs);
 
     KickSamplerProcessor& processor;
     KickLookAndFeel lnf;
 
+    LibraryPanel library;
     WaveformView waveform;
+    LengthCard lengthCard;
     juce::TextButton loadButton { "Sample laden" };
     juce::Label sampleName;
-    juce::Label tempoLabel;
-    juce::Label lengthLabel;
-    juce::Label lengthDetail;
 
-    Knob kStart, kLength, kTranspose, kAttack, kHold, kDecay, kVelocity, kGain;
+    Knob kStart, kLength, kTranspose;
+    Knob kPitchAmt, kPitchDecay;
+    Knob kAttack, kHold, kDecay, kRelease;
+    Knob kSubVol, kSubTune, kSubDecay;
+    Knob kClipDrive;
+    Knob kVelocity, kGain;
+
+    juce::ToggleButton clipOn { "ON" }, clipHard { "HARD" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> clipOnAtt, clipHardAtt;
+    Meter clipMeter, outMeter;
+
+    Module mSample, mPitch, mAmp, mSub, mClip, mOut;
 
     std::unique_ptr<juce::FileChooser> chooser;
-    bool dragHover = false;
+    juce::int64 lastTimelineHash = 0;
+    juce::Rectangle<int> tempoBounds;
+    juce::String tempoText;
+    KickTimeline timeline;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KickSamplerEditor)
 };

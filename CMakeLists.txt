@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(KickSampler VERSION 1.0.0)
+project(KickSampler VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,14 +29,16 @@ juce_add_plugin(KickSampler
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Drum Sampler)
 
 target_sources(KickSampler PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
-    Source/WaveformView.cpp)
+    Source/WaveformView.cpp
+    Source/SampleLibrary.cpp
+    Source/LibraryPanel.cpp)
 
 target_compile_definitions(KickSampler PUBLIC
     JUCE_WEB_BROWSER=0
@@ -54,3 +56,10 @@ target_link_libraries(KickSampler
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
 
+
+if(KICK_TEST_SRC)
+    add_executable(KickTest ${KICK_TEST_SRC})
+    target_link_libraries(KickTest PRIVATE KickSampler)
+    target_include_directories(KickTest PRIVATE $<TARGET_PROPERTY:KickSampler,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(KickTest PRIVATE $<TARGET_PROPERTY:KickSampler,COMPILE_DEFINITIONS>)
+endif()

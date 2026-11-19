@@ -2,32 +2,49 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_formats/juce_audio_formats.h>
+#include <juce_dsp/juce_dsp.h>
 #include <atomic>
 #include <memory>
 #include <vector>
+#include "SampleLibrary.h"
 
 namespace ParamIDs
 {
-    inline constexpr const char* start     = "start";
-    inline constexpr const char* length    = "length";
-    inline constexpr const char* transpose = "transpose";
-    inline constexpr const char* attack    = "attack";
-    inline constexpr const char* hold      = "hold";
-    inline constexpr const char* decay     = "decay";
-    inline constexpr const char* velocity  = "velocity";
-    inline constexpr const char* gain      = "gain";
+    // Sample
+    inline constexpr const char* start      = "start";
+    inline constexpr const char* length     = "length";
+    inline constexpr const char* transpose  = "transpose";
+    // Pitch-Envelope
+    inline constexpr const char* pitchAmt   = "pitchAmt";
+    inline constexpr const char* pitchDecay = "pitchDecay";
+    // Amp-Envelope
+    inline constexpr const char* attack     = "attack";
+    inline constexpr const char* hold       = "hold";
+    inline constexpr const char* decay      = "decay";
+    inline constexpr const char* release    = "release";
+    // Sub
+    inline constexpr const char* subVol     = "subVol";
+    inline constexpr const char* subTune    = "subTune";
+    inline constexpr const char* subDecay   = "subDecay";
+    // Clipper
+    inline constexpr const char* clipOn     = "clipOn";
+    inline constexpr const char* clipHard   = "clipHard";
+    inline constexpr const char* clipDrive  = "clipDrive";
+    // Output
+    inline constexpr const char* velocity   = "velocity";
+    inline constexpr const char* gain       = "gain";
 }
 
-// Geladenes Sample (unveraenderlich nach dem Laden)
+// Release-Wert ab dem der Release aus ist (One-Shot)
+inline constexpr float releaseOffValue = 5000.0f;
+
 struct SampleData
 {
     juce::AudioBuffer<float> buffer;
     double sampleRate = 44100.0;
     juce::String name;
-    juce::File file;
 };
 
-// Min/Max-Peaks fuer die Waveform-Anzeige
 struct WaveformPeaks
 {
     std::vector<float> mins, maxs;
@@ -35,6 +52,17 @@ struct WaveformPeaks
     double sampleRate = 44100.0;
     juce::String name;
     bool isEmpty() const { return mins.empty(); }
+};
+
+// Schnappschuss der Parameter fuer Berechnungen im GUI
+struct KickTimeline
+{
+    double dt = 0.0005;                 // Schrittweite in Sekunden
+    std::vector<double> sourcePos;      // Position im Sample (Bruchteil 0..1) pro Schritt
+    std::vector<float>  ampEnv;         // Amp-Envelope pro Schritt
+    double sampleSeconds = 0.0;         // hoerbare Laenge des Sample-Teils
+    double subSeconds = 0.0;            // Laenge des Sub-Teils
+    double totalSeconds() const { return juce::jmax (sampleSeconds, subSeconds); }
 };
 
 class KickSamplerProcessor : public juce::AudioProcessor,
@@ -68,21 +96,26 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Sample laden (nicht vom Audio-Thread aufrufen)
     bool loadSample (const juce::File& file);
     static bool isSupportedFile (const juce::File& file);
 
     // Fuer den Editor
     WaveformPeaks getPeaks() const;
-    double getHostBpm() const          { return hostBpm.load(); }
-    bool   hasHostTempo() const        { return hostTempoValid.load(); }
-    int    getTimeSigNumerator() const { return timeSigNum.load(); }
-    int    getTimeSigDenominator() const { return timeSigDen.load(); }
-    // Abspielposition im Sample (0..1) oder -1 wenn nichts spielt
-    float  getPlayPosition() const     { return playPosition.load(); }
+    double getHostBpm() const             { return hostBpm.load(); }
+    bool   hasHostTempo() const           { return hostTempoValid.load(); }
+    int    getTimeSigNumerator() const    { return timeSigNum.load(); }
+    int    getTimeSigDenominator() const  { return timeSigDen.load(); }
+    float  getPlayPosition() const        { return playPosition.load(); }
+    float  getClipReductionDb() const     { return clipReductionDb.load(); }
+    float  getOutputPeak() const          { return outputPeak.load(); }
 
-    // Hoerbare Laenge der Kick in Sekunden (Sample-Bereich, Pitch und Envelope)
-    double getEffectiveLengthSeconds() const;
+    // Vorhoeren aus der Library (spielt das Sample einmal ab)
+    void   triggerPreview()               { previewRequested = true; }
+    SampleLibrary& getLibrary()           { return *library; }
+    juce::File getLoadedFile() const      { const juce::ScopedLock sl (peaksLock); return loadedFile; }
+
+    // Simuliert den Kick-Verlauf (Pitch-Envelope, Amp-Envelope, Sub) mit den aktuellen Parametern
+    KickTimeline computeTimeline (double dtSec = 0.0005) const;
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -92,23 +125,38 @@ private:
     struct Voice
     {
         bool   active = false;
-        double position = 0.0;     // Position im Sample (Samples)
-        double endPosition = 0.0;
-        double increment = 1.0;
-        float  velocityGain = 1.0f;
-        int    envStage = 0;        // 0 Attack, 1 Hold, 2 Decay
-        double envSamples = 0.0;    // Samples seit Beginn der Stage
+        int    note = -1;
+        // Sample-Teil
+        bool   sampleActive = false;
+        double position = 0.0, endPosition = 0.0, baseIncrement = 1.0;
+        int    envStage = 0;
+        double envSamples = 0.0;
         float  envLevel = 0.0f;
-        float  fadeGain = 1.0f;     // fuer Choke beim Retrigger
+        // Pitch-Envelope
+        float  pitchEnv = 1.0f;
+        // Sub
+        bool   subActive = false;
+        double subPhase = 0.0;
+        float  subLevel = 1.0f;
+        float  subAttack = 0.0f;
+        // Gemeinsam
+        float  velocityGain = 1.0f;
+        bool   releasing = false;
+        float  releaseGain = 1.0f;
+        float  releaseCoeff = 1.0f;
+        float  fadeGain = 1.0f;     // Choke
         float  fadeStep = 0.0f;
+        juce::uint32 age = 0;
     };
 
-    void startVoice (int midiVelocity, const SampleData& s);
-    void renderVoices (juce::AudioBuffer<float>& out, int startSample, int numSamples, const SampleData& s);
+    void startVoice (int note, int midiVelocity, const SampleData* s);
+    void releaseVoices (int note);
+    void renderVoices (juce::AudioBuffer<float>& out, int startSample, int numSamples, const SampleData* s);
+    void processClipper (juce::AudioBuffer<float>& buffer);
 
     juce::AudioFormatManager formatManager;
 
-    juce::SpinLock sampleLock;           // schuetzt currentSample
+    juce::SpinLock sampleLock;
     std::unique_ptr<SampleData> currentSample;
 
     mutable juce::CriticalSection peaksLock;
@@ -117,26 +165,28 @@ private:
 
     static constexpr int maxVoices = 4;
     Voice voices[maxVoices];
+    juce::uint32 voiceCounter = 0;
 
     double currentSampleRate = 44100.0;
+
+    std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
+    juce::SmoothedValue<float> clipDriveSmoothed, gainSmoothed;
 
     std::atomic<double> hostBpm { 120.0 };
     std::atomic<bool>   hostTempoValid { false };
     std::atomic<int>    timeSigNum { 4 }, timeSigDen { 4 };
     std::atomic<float>  playPosition { -1.0f };
+    std::atomic<float>  clipReductionDb { 0.0f };
+    std::atomic<float>  outputPeak { 0.0f };
+    std::atomic<bool>   previewRequested { false };
+    juce::SharedResourcePointer<SampleLibrary> library;
     std::atomic<int>    loadedNumSamples { 0 };
     std::atomic<double> loadedSampleRate { 44100.0 };
 
-    std::atomic<float>* pStart     = nullptr;
-    std::atomic<float>* pLength    = nullptr;
-    std::atomic<float>* pTranspose = nullptr;
-    std::atomic<float>* pAttack    = nullptr;
-    std::atomic<float>* pHold      = nullptr;
-    std::atomic<float>* pDecay     = nullptr;
-    std::atomic<float>* pVelocity  = nullptr;
-    std::atomic<float>* pGain      = nullptr;
-
-    juce::SmoothedValue<float> gainSmoothed;
+    std::atomic<float>* p[17] {};
+    enum P { pStart, pLength, pTranspose, pPitchAmt, pPitchDecay, pAttack, pHold, pDecay, pRelease,
+             pSubVol, pSubTune, pSubDecay, pClipOn, pClipHard, pClipDrive, pVelocity, pGain };
+    float param (P i) const { return p[i]->load(); }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KickSamplerProcessor)
 };

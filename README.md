@@ -12,6 +12,13 @@ VST3-Instrument für macOS (Apple Silicon), inspiriert von Abletons Drum Sampler
 - Parameter: Start, Length, Transpose (±48 st), Attack, Hold, Decay, Velocity, Gain
 - Jede MIDI-Note triggert das Sample (Drum-Modus). Ein neuer Hit würgt den vorherigen
   sauber ab (4 ms Fade), wie bei einer Drum-Machine.
+- Pitch-Envelope (Amount, Decay) wirkt auf Sample und Sub
+- Release beim Note-Off (Standard: Off = One-Shot)
+- Sub-Oszillator: Volume, Tune (Hz + Notenname), Decay
+- Clipper im KNOCK-Stil: Drive, Soft/Hard, 4x Oversampling, Gain-Reduction-Meter
+- Library: Ordner aufs Plugin ziehen. Alle One-Shots (auch in Unterordnern) werden erkannt
+  und indexiert. Suche, Vorhoeren per Klick oder Pfeiltasten. Index liegt unter
+  `~/Library/Application Support/Kick Sampler/library.json`
 - Alle Parameter automatisierbar, Sample-Pfad wird im Projekt gespeichert
 
 ## Bauen über GitHub

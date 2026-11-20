@@ -1,6 +1,6 @@
 # One Shooter
 
-A one-shot sample player (VST3 and Audio Unit) for macOS on Apple Silicon, inspired by Ableton's Drum Sampler. Built for kicks, works with any one-shot.
+A sample player for one-shots, like a drum sampler (VST3 and Audio Unit) for macOS on Apple Silicon, inspired by Ableton's Drum Sampler.
 
 by Dani Koenig
 

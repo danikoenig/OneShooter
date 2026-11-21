@@ -19,7 +19,7 @@ by Dani Koenig
 - **Sub oscillator:** volume, tune (Hz with note name), decay.
 - **Gate:** cuts every hit to a length synced to your DAW tempo (Off, 1/32 to 1 bar), with fade and curve controls.
 - **Tone:** tilt (darker/brighter), Low Cut and High Cut.
-- **Clipper** (KNOCK style): drive, soft/hard, 4x oversampling, gain reduction meter, **Auto Gain** (loudness matched, so you hear the saturation, not just more level).
+- **Clipper** (Knack style): drive, soft/hard, 4x oversampling, gain reduction meter, **Auto Gain** (loudness matched, so you hear the saturation, not just more level).
 - **Limiter** on the output (ceiling -1 dB) with gain reduction meter.
 - **Library:**
   - Drop a folder onto the plugin to find all one-shots inside it, including subfolders.

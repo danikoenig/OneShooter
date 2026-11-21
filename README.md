@@ -1,5 +1,7 @@
 # One Shooter
 
+**Manual (PDF):** [English](https://github.com/danikoenig/OneShooter/releases/latest/download/OneShooter-Manual-EN.pdf) | [Deutsch](https://github.com/danikoenig/oneshooter/releases/latest/download/OneShooter-Manual-DE.pdf)
+
 A sample player for one-shots, like a drum sampler (VST3, CLAP and Audio Unit) for macOS on Apple Silicon, inspired by Ableton's Drum Sampler.
 
 by Dani Koenig
@@ -34,13 +36,13 @@ by Dani Koenig
 Get the latest version from the [Releases page](https://github.com/danikoenig/OneShooter/releases):
 
 - **OneShooter-Installer.pkg** – easiest, no Terminal needed
-- **OneShooter-VST3-macOS-arm64.zip** – VST3 and AU plugin plus the install guide, for manual installation
+- **OneShooter-VST3-macOS-arm64.zip** – VST3, AU and CLAP plugin plus the install guide, for manual installation
 
 ## Installation
 
 Step-by-step guide (English and German): [INSTALL.txt](INSTALL.txt)
 
-**Installer:** double-click `OneShooter-Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs the VST3 to `/Library/Audio/Plug-Ins/VST3` and the Audio Unit to `/Library/Audio/Plug-Ins/Components`.
+**Installer:** double-click `OneShooter-Installer.pkg`. Because the plugin is not notarized by Apple, macOS blocks it the first time: open **System Settings → Privacy & Security**, click **Open Anyway**, then run the installer. It installs the VST3 to `/Library/Audio/Plug-Ins/VST3` the Audio Unit to `/Library/Audio/Plug-Ins/Components` and CLAP to `/Library/Audio/Plug-Ins/CLAP`.
 
 **Manual (Terminal):** unzip in your Downloads folder, then:
 

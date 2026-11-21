@@ -30,7 +30,7 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
 
       - name: Build
-        run: cmake --build build --config Release --target OneShooter_VST3 OneShooter_AU OneShooter_Standalone -j 4
+        run: cmake --build build --config Release --target OneShooter_VST3 OneShooter_AU OneShooter_Standalone OneShooter_CLAP -j 4
 
       - name: Validate AU (auval)
         run: |
@@ -47,10 +47,12 @@ jobs:
           ART=build/OneShooter_artefacts/Release
           codesign --force --deep --sign - "$ART/VST3/One Shooter.vst3"
           codesign --force --deep --sign - "$ART/AU/One Shooter.component"
+          codesign --force --deep --sign - "$ART/CLAP/One Shooter.clap"
           codesign --force --deep --sign - "$ART/Standalone/One Shooter.app"
           mkdir -p dist "pkg/One Shooter"
           cp -R "$ART/VST3/One Shooter.vst3" "pkg/One Shooter/"
           cp -R "$ART/AU/One Shooter.component" "pkg/One Shooter/"
+          cp -R "$ART/CLAP/One Shooter.clap" "pkg/One Shooter/"
           cp INSTALL.txt "pkg/One Shooter/INSTALL.txt"
           ditto -c -k --keepParent "pkg/One Shooter" "dist/OneShooter-VST3-macOS-arm64.zip"
           ditto -c -k --keepParent "$ART/Standalone/One Shooter.app" "dist/OneShooter-Standalone-macOS-arm64.zip"
@@ -76,6 +78,14 @@ jobs:
           pkgbuild --root pkgroot-au --component-plist build/pkg/component-au.plist \
             --identifier ch.danikoenig.oneshooter.au --version "$VERSION" \
             --install-location "/Library/Audio/Plug-Ins/Components" build/pkg/OneShooterAU.pkg
+          # CLAP-Paket
+          mkdir -p pkgroot-clap
+          cp -R "$ART/CLAP/One Shooter.clap" pkgroot-clap/
+          pkgbuild --analyze --root pkgroot-clap build/pkg/component-clap.plist
+          plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component-clap.plist
+          pkgbuild --root pkgroot-clap --component-plist build/pkg/component-clap.plist \
+            --identifier ch.danikoenig.oneshooter.clap --version "$VERSION" \
+            --install-location "/Library/Audio/Plug-Ins/CLAP" build/pkg/OneShooterCLAP.pkg
           sed "s/@VERSION@/$VERSION/g" installer/distribution.xml > build/pkg/distribution.xml
           productbuild --distribution build/pkg/distribution.xml --resources installer/resources \
             --package-path build/pkg "dist/OneShooter-Installer.pkg"

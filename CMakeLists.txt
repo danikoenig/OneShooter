@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(OneShooter VERSION 1.5.2)
+project(OneShooter VERSION 1.5.3)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +17,17 @@ else()
         GIT_SHALLOW ON)
     FetchContent_MakeAvailable(JUCE)
 endif()
+
+# CLAP (Bitwig, Reaper u.a.) ueber clap-juce-extensions
+include(FetchContent)
+FetchContent_Declare(
+    clap-juce-extensions
+    GIT_REPOSITORY https://github.com/free-audio/clap-juce-extensions.git
+    GIT_TAG main
+    GIT_SUBMODULES_RECURSE TRUE
+    EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(clap-juce-extensions)
+
 
 juce_add_plugin(OneShooter
     COMPANY_NAME "Dani Koenig"
@@ -65,3 +76,7 @@ if(SHOOTER_TEST_SRC)
     target_include_directories(ShooterTest PRIVATE $<TARGET_PROPERTY:OneShooter,INCLUDE_DIRECTORIES>)
     target_compile_definitions(ShooterTest PRIVATE $<TARGET_PROPERTY:OneShooter,COMPILE_DEFINITIONS>)
 endif()
+
+clap_juce_extensions_plugin(TARGET OneShooter
+    CLAP_ID "ch.danikoenig.oneshooter"
+    CLAP_FEATURES instrument sampler stereo)

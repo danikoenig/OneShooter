@@ -584,6 +584,7 @@ void OneShooterEditor::setLibraryVisible (bool show)
 
 void OneShooterEditor::resized()
 {
+    frameOverlay.attach (*this, 0.0f);
     auto r = getLocalBounds().reduced (14);
 
     if (library.isVisible())

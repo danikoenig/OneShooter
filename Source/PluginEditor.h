@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "FrameOverlay.h"
 #include "WaveformView.h"
 #include "LibraryPanel.h"
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -71,6 +72,8 @@ class OneShooterEditor : public juce::AudioProcessorEditor,
                           private juce::ChangeListener,
                           private juce::Timer
 {
+    FrameOverlay frameOverlay;
+
 public:
     explicit OneShooterEditor (OneShooterProcessor&);
     ~OneShooterEditor() override;
